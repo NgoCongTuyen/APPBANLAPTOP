@@ -22,17 +22,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,26 +44,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.constraintlayout.compose.ConstraintLayout
 import coil.compose.AsyncImage
-import coil.compose.rememberImagePainter
 import com.example.appbanlaptop.Model.CategoryModel
 import com.example.appbanlaptop.Model.ItemsModel
-import com.example.appbanlaptop.ViewModel.MainViewModel
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.rememberPagerState
-import com.google.firebase.Firebase
 import com.google.firebase.FirebaseApp
-import com.google.firebase.database.database
+import kotlinx.coroutines.InternalCoroutinesApi
+import kotlinx.coroutines.NonDisposableHandle.parent
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -72,21 +72,20 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         FirebaseApp.initializeApp(this)
         setContent {
-                MainActivityScreen()
+            MainActivityScreen(
+                onCartClick = { /* Xử lý khi nhấn vào Cart */ }
+            )
         }
     }
 }
 
-
-
-
+@OptIn(InternalCoroutinesApi::class)
 @Composable
-fun MainActivityScreen() {
-
+fun MainActivityScreen(onCartClick: () -> Unit) {
     val categories = listOf(
-        CategoryModel("Computer", R.drawable.cat1),
-        CategoryModel("Phone", R.drawable.cat2),
-        CategoryModel("Earphone", R.drawable.cat3), // Thêm dấu phẩy ở đây
+        CategoryModel("Laptop", R.drawable.cat1),
+        CategoryModel("IPhone", R.drawable.cat2),
+        CategoryModel("Earphone", R.drawable.cat3),
         CategoryModel("Gaming", R.drawable.cat4),
         CategoryModel("Camera", R.drawable.cat5),
         CategoryModel("Clock", R.drawable.cat6)
@@ -95,75 +94,107 @@ fun MainActivityScreen() {
         ItemsModel("Headphone 12A", 4.6f, 95.0, R.drawable.cat1_1),
         ItemsModel("Business Laptop", 4.7f, 550.0, R.drawable.cat2_1),
         ItemsModel("laptop B2003", 4.7f, 550.0, R.drawable.cat2_2),
-        ItemsModel("laptop B2003", 4.7f, 550.0, R.drawable.cat2_3)
+        ItemsModel("laptop B2003", 4.7f, 550.0, R.drawable.cat2_3),
     )
 
-    ConstraintLayout(modifier = Modifier.background(Color.White)) {
-        val (scrollList) = createRefs()
-
+    // Sử dụng Scaffold để cố định BottomMenu
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        bottomBar = {
+            BottomMenu(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                onItemClick = onCartClick
+            )
+        }
+    ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .constrainAs(scrollList) {
-                    top.linkTo(parent.top)
-                    bottom.linkTo(parent.bottom)
-                    start.linkTo(parent.start)
-                    end.linkTo(parent.end)
-                }
+                .background(Color.White)
+                .padding(paddingValues) // Tôn trọng khoảng cách từ Scaffold
+                .padding(top = 48.dp)
         ) {
+            // Welcome Section
             item {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 48.dp, start = 16.dp),
+                        .padding(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
-                        Text("Welcome Back", color = Color.Black)
-
                         Text(
-                            "Jackie", color = Color.Black,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
+                            text = "Welcome Back",
+                            fontSize = 16.sp,
+                            color = Color.Gray
+                        )
+                        Text(
+                            text = "Jackie",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
                         )
                     }
                     Row {
                         Image(
                             painter = painterResource(R.drawable.fav_icon),
-                            contentDescription = "fav icon"
+                            contentDescription = "Favorite",
+                            modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(16.dp))
-
                         Image(
                             painter = painterResource(R.drawable.search_icon),
-                            contentDescription = "search icon",
+                            contentDescription = "Search",
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
             }
-            // Thêm Slider vào đây
+
+            // Banner Section
             item {
                 AutoSlidingCarousel()
             }
+
+            // Categories Section
             item {
-                SectionTitle("Categories", "See all")
+                SectionTitle("Categories", "See All")
             }
             item {
                 CategoryList(categories)
             }
+
+            // Products Section
             item {
-                SectionTitle("Products", "See all") // Đổi tiêu đề cho rõ ràng
+                SectionTitle("Recommendation", "See All")
             }
-            item {
-                ItemsList(products)
+            items(products.chunked(2)) { pair ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    pair.forEach { product ->
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .width(150.dp)
+                        ) {
+                            ProductItem(product = product)
+                        }
+                    }
+                    if (pair.size < 2) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
             }
         }
     }
 }
-
-
-///category+
 
 @Composable
 fun CategoryList(categories: List<CategoryModel>) {
@@ -191,38 +222,30 @@ fun CategoryItem(
     isSelected: Boolean,
     onItemClick: () -> Unit
 ) {
-    Row(
+    Column(
         modifier = Modifier
-            .clickable(onClick = onItemClick)
-            .background(
-                color = if (isSelected) colorResource(R.color.purple) else Color.Transparent,
-                shape = RoundedCornerShape(8.dp)
-            ),
-        verticalAlignment = Alignment.CenterVertically
+            .clickable(onClick = onItemClick),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Image(
             painter = painterResource(id = item.iconResId),
             contentDescription = item.title,
             modifier = Modifier
-                .size(45.dp)
+                .size(50.dp)
                 .background(
-                    color = if (isSelected) Color.Transparent else colorResource(R.color.grey),
+                    color = if (isSelected) Color(0xFF6200EE) else Color(0xFFE0E0E0),
                     shape = RoundedCornerShape(8.dp)
                 ),
             contentScale = ContentScale.Inside,
-            colorFilter = if (isSelected) {
-                ColorFilter.tint(Color.White)
-            } else {
-                ColorFilter.tint(Color.Black)
-            }
+            colorFilter = if (isSelected) ColorFilter.tint(Color.White) else null
         )
         if (isSelected) {
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = item.title,
-                color = Color.White,
+                color = Color.Black,
                 fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(end = 8.dp)
+                fontWeight = FontWeight.Bold
             )
         }
     }
@@ -233,8 +256,9 @@ fun SectionTitle(title: String, actionText: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 16.dp, end = 16.dp, top = 16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = title,
@@ -244,31 +268,10 @@ fun SectionTitle(title: String, actionText: String) {
         )
         Text(
             text = actionText,
-            color = colorResource(R.color.purple),
+            color = Color(0xFF6200EE),
+            fontSize = 16.sp,
+            modifier = Modifier.clickable { /* TODO: Handle See All */ }
         )
-    }
-}
-
-
-
-@Composable
-fun ItemsList(products: List<ItemsModel>) {
-    Column(
-        modifier = Modifier.fillMaxWidth() .padding(30.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        products.chunked(2).forEach { pair ->
-            LazyRow(
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                items(pair.size) { index ->
-                    ProductItem(product = pair[index])
-                }
-            }
-        }
     }
 }
 
@@ -277,43 +280,59 @@ fun ItemsList(products: List<ItemsModel>) {
 fun ProductItem(product: ItemsModel) {
     Column(
         modifier = Modifier
-            .height(225.dp)
-            .background(Color.White, shape = RoundedCornerShape(8.dp))
-            .padding(8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally // Căn giữa ảnh theo chiều ngang
+            .width(150.dp)
+            .height(220.dp)
+            .background(Color(0xFFF5F5F5), shape = RoundedCornerShape(12.dp))
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(100.dp), // Giảm chiều cao để ảnh nhỏ hơn ô
-            contentAlignment = Alignment.Center // Căn giữa ảnh trong Box
+                .height(140.dp)
+                .background(Color(0xFFE0E0E0), shape = RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center
         ) {
             AsyncImage(
                 model = product.imageRes,
                 contentDescription = product.name,
                 modifier = Modifier
-                    .size(90.dp) // Giảm kích thước ảnh từ 120.dp → 90.dp
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color.LightGray),
-                contentScale = ContentScale.Crop
+                    .fillMaxSize(0.9f)
+                    .clip(RoundedCornerShape(8.dp)),
+                contentScale = ContentScale.Fit
             )
         }
-        Spacer(modifier = Modifier.height(8.dp)) // Tạo khoảng cách giữa ảnh và nội dung
-        Text(text = product.name, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(text = "⭐ ${product.rating}", fontSize = 12.sp, color = Color.Yellow)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = product.name,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "⭐ ${product.rating}",
+                fontSize = 12.sp,
+                color = Color(0xFFFFC107)
+            )
             Spacer(modifier = Modifier.width(4.dp))
-            Text(text = "$${product.price}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Blue)
+            Text(
+                text = "$${product.price}",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
         }
     }
 }
 
 
 
-
-
-
-/// slide
 @OptIn(ExperimentalPagerApi::class)
 @Composable
 fun AutoSlidingCarousel(
@@ -340,7 +359,7 @@ fun AutoSlidingCarousel(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(8.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         HorizontalPager(
@@ -348,16 +367,25 @@ fun AutoSlidingCarousel(
             state = pagerState,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(180.dp)
+                .height(150.dp)
+                .clip(RoundedCornerShape(12.dp)) // Giữ viền bo góc
         ) { page ->
-            Image(
-                painter = painterResource(id = banners[page]),
-                contentDescription = "Banner Image",
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-            )
+                    .background(Color(0xFF6200EE)) // Giữ background nếu cần
+            ) {
+                Image(
+                    painter = painterResource(id = banners[page]),
+                    contentDescription = "Banner Image",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(10.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            }
         }
-        Spacer(modifier=Modifier.height(-10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         DotIndicator(totalDots = banners.size, selectedIndex = pagerState.currentPage)
     }
 }
@@ -367,7 +395,7 @@ fun DotIndicator(
     totalDots: Int,
     selectedIndex: Int,
     dotSize: Dp = 8.dp,
-    selectedColor: Color = Color.Blue,
+    selectedColor: Color = Color(0xFF6200EE),
     unselectedColor: Color = Color.Gray,
     modifier: Modifier = Modifier
 ) {
@@ -380,7 +408,7 @@ fun DotIndicator(
         repeat(totalDots) { index ->
             Box(
                 modifier = Modifier
-                    .size(if (index == selectedIndex) dotSize * 1f else dotSize) // Chấm lớn hơn khi được chọn
+                    .size(if (index == selectedIndex) dotSize else dotSize * 0.5f)
                     .background(
                         color = if (index == selectedIndex) selectedColor else unselectedColor,
                         shape = CircleShape
@@ -394,5 +422,74 @@ fun DotIndicator(
 }
 
 
+@Composable
+fun BottomMenu(
+    modifier: Modifier = Modifier,
+    onItemClick: () -> Unit
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+            .background(
+                color = colorResource(R.color.purple),
+                shape = RoundedCornerShape(10.dp)
+            ),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        BottomMenuItem(
+            icon = painterResource(R.drawable.btn_1),
+            text = "Explore"
+        )
+        BottomMenuItem(
+            icon = painterResource(R.drawable.btn_2),
+            text = "Cart",
+            onItemClick = onItemClick
+        )
+        BottomMenuItem(
+            icon = painterResource(R.drawable.btn_3),
+            text = "Favorite"
+        )
+        BottomMenuItem(
+            icon = painterResource(R.drawable.btn_4),
+            text = "Order"
+        )
+        BottomMenuItem(
+            icon = painterResource(R.drawable.btn_5),
+            text = "Profile"
+        )
+    }
+}
 
-
+@Composable
+fun BottomMenuItem(
+    icon: Painter,
+    text: String,
+    onItemClick: (() -> Unit)? = null
+) {
+    Column(
+        modifier = Modifier
+            .height(60.dp)
+            .clickable(
+                enabled = onItemClick != null,
+                onClick = { onItemClick?.invoke() }
+            )
+            .padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            painter = icon,
+            contentDescription = text,
+            tint = Color.White,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = text,
+            color = Color.White,
+            fontSize = 10.sp,
+            textAlign = TextAlign.Center
+        )
+    }
+}
