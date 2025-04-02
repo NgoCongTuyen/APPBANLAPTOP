@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "312176967841",
+    "firebase_url": "https://appbanlaptop-default-rtdb.firebaseio.com",
+    "project_id": "appbanlaptop",
+    "storage_bucket": "appbanlaptop.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:312176967841:android:6e82c01ea9007157bbf0e0",
+        "android_client_info": {
+          "package_name": "com.example.appbanlaptop"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "312176967841-hb1u71qkb3ja6sqldq7pi3ul6amijc8k.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.appbanlaptop",
+            "certificate_hash": "22da0c09cb7dee3de42a3c8e07845b4a09533df5"
+          }
+        },
+        {
+          "client_id": "312176967841-vi09lepvd4htvomtt475t5krk8qhd71b.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDk8jXmcdoF3ZW34VjPNAxQXACsSAqoWxQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "312176967841-vi09lepvd4htvomtt475t5krk8qhd71b.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
