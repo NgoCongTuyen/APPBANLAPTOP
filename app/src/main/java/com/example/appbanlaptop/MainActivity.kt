@@ -253,14 +253,21 @@ fun SectionTitle(title: String, actionText: String) {
 
 @Composable
 fun ItemsList(products: List<ItemsModel>) {
-    LazyRow (
-        modifier = Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(16.dp),
-        verticalAlignment = Alignment.CenterVertically
+    Column(
+        modifier = Modifier.fillMaxWidth() .padding(30.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        items(products.size) { index ->
-            ProductItem(product = products[index])
-            Spacer(modifier = Modifier.height(16.dp)) // Thêm khoảng cách giữa các item
+        products.chunked(2).forEach { pair ->
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                items(pair.size) { index ->
+                    ProductItem(product = pair[index])
+                }
+            }
         }
     }
 }
