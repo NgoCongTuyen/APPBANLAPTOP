@@ -54,9 +54,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.example.appbanlaptop.Model.CategoryModel
 import com.example.appbanlaptop.Model.ItemsModel
+import com.example.appbanlaptop.Screen.CartScreen
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.rememberPagerState
@@ -66,15 +70,28 @@ import kotlinx.coroutines.NonDisposableHandle.parent
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         FirebaseApp.initializeApp(this)
         setContent {
-            MainActivityScreen(
-                onCartClick = { /* Xử lý khi nhấn vào Cart */ }
-            )
+            val navController = rememberNavController()
+
+            NavHost(
+                navController = navController,
+                startDestination = "home"
+            ) {
+                composable("home") {
+                    MainActivityScreen(onCartClick = {
+                        navController.navigate("cart") // Điều hướng sang giỏ hàng
+                    })
+                }
+                composable("cart") {
+                    CartScreen(navController)
+                }
+            }
         }
     }
 }
