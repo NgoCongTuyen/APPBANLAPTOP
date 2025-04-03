@@ -1,4 +1,4 @@
-package com.example.appbanlaptop
+package com.example.appbanlaptop.Activity
 
 import android.content.Intent
 import android.os.Bundle
@@ -6,8 +6,6 @@ import android.view.View
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
@@ -19,9 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.TextField
-import androidx.compose.material.rememberBackdropScaffoldState
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
@@ -29,8 +24,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Vertices
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -39,9 +32,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import com.example.appbanlaptop.R
 import com.example.appbanlaptop.ui.theme.APPBANLAPTOPTheme
 
 class IntroActivity : ComponentActivity() {
@@ -78,7 +69,7 @@ fun IntroScreen(onClick:() -> Unit = {}){
         Spacer(Modifier.height(32.dp))
 
         Text(
-            text = stringResource(id=R.string.intro_title),
+            text = stringResource(id= R.string.intro_title),
             modifier = Modifier.padding(top = 16.dp),
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
@@ -101,18 +92,11 @@ fun IntroScreen(onClick:() -> Unit = {}){
             shape = RoundedCornerShape(10.dp)
         ){
             Text(
-                text = stringResource(id=R.string.letgo),
+                text = stringResource(id= R.string.letgo),
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp,
             )
         }
     }
-}
-
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewIntroScreen() {
-    IntroScreen()
 }

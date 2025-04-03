@@ -43,11 +43,11 @@ android {
 }
 
 dependencies {
-
+    implementation ("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
     implementation("com.google.android.gms:play-services-auth:20.7.0")
     implementation(platform("com.google.firebase:firebase-bom:33.11.0"))
     implementation("com.google.firebase:firebase-auth")
-
+    implementation ("com.google.firebase:firebase-database-ktx:20.3.0")
     implementation("io.coil-kt:coil-compose:2.2.2") // Check for the latest version
     implementation("com.google.accompanist:accompanist-pager-indicators:0.28.0")
     implementation("com.google.accompanist:accompanist-pager:0.28.0") // Check for the latest version
@@ -71,6 +71,8 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.firebase.database.ktx)
+    implementation(libs.androidx.constraintlayout)
+    implementation(libs.androidx.navigation.runtime.android)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
