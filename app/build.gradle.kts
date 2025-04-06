@@ -3,7 +3,8 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("com.google.gms.google-services")
-
+    id ("kotlin-android")
+    id ("kotlin-parcelize")
 }
 
 
@@ -43,7 +44,6 @@ android {
 }
 
 dependencies {
-    implementation ("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
     implementation("com.google.android.gms:play-services-auth:20.7.0")
     implementation(platform("com.google.firebase:firebase-bom:33.11.0"))
     implementation("com.google.firebase:firebase-auth")
@@ -71,8 +71,6 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.firebase.database.ktx)
-    implementation(libs.androidx.constraintlayout)
-    implementation(libs.androidx.navigation.runtime.android)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

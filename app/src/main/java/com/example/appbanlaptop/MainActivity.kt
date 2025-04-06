@@ -1,4 +1,4 @@
-package com.example.appbanlaptop.Activity
+package com.example.appbanlaptop
 
 import android.content.Context
 import android.content.Intent
@@ -59,9 +59,10 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
+import com.example.appbanlaptop.Activity.DetailsItemsActivity
+import com.example.appbanlaptop.Activity.ListItemActivity
 
 import com.example.appbanlaptop.Model.ProductItem
-import com.example.appbanlaptop.R
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.rememberPagerState

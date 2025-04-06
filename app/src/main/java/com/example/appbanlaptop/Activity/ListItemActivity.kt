@@ -19,7 +19,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.appbanlaptop.CategoryItem
 import com.example.appbanlaptop.Model.ProductItem
+import com.example.appbanlaptop.ProductItem
 import com.google.firebase.database.*
 
 class ListItemActivity : ComponentActivity() {
