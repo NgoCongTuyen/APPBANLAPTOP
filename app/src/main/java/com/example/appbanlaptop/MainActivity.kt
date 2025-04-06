@@ -61,6 +61,7 @@ import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.example.appbanlaptop.Activity.DetailsItemsActivity
 import com.example.appbanlaptop.Activity.ListItemActivity
+import com.example.appbanlaptop.Cart.CartScreenActivity
 
 import com.example.appbanlaptop.Model.ProductItem
 import com.google.accompanist.pager.ExperimentalPagerApi
@@ -187,7 +188,10 @@ fun MainActivityScreen(onCartClick: @Composable () -> Unit) {
         modifier = Modifier.fillMaxSize(),
         bottomBar = {
             BottomMenu(
-                onItemClick = { /* Xử lý khi nhấn vào Cart */ }
+                onItemClick = {
+                    val intent = Intent(context, CartScreenActivity::class.java)
+                    context.startActivity(intent)
+                }
             )
         }
     ) { paddingValues ->
@@ -627,6 +631,7 @@ fun BottomMenu(
     modifier: Modifier = Modifier,
     onItemClick: () -> Unit
 ) {
+    val context = LocalContext.current
     Row(
         modifier = modifier
             .fillMaxWidth()
