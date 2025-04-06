@@ -233,7 +233,23 @@ fun MainActivityScreen(onCartClick: @Composable () -> Unit) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         pair.forEach { product ->
-                            Box(modifier = Modifier.weight(1f).width(150.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .width(150.dp)
+                                    .clickable {
+                                        // Mở DetailsItemsActivity khi nhấn vào sản phẩm
+                                        val intent = Intent(context, DetailsItemsActivity::class.java).apply {
+                                            putExtra("PRODUCT_TITLE", product.title)
+                                            putExtra("PRODUCT_DESCRIPTION", product.description)
+                                            putExtra("PRODUCT_PRICE", product.price ?: 0L)
+                                            putExtra("PRODUCT_RATING", product.rating ?: 0.0)
+                                            putExtra("PRODUCT_PIC_URL", product.picUrl?.firstOrNull())
+                                            putExtra("PRODUCT_MODELS", product.model?.toTypedArray())
+                                        }
+                                        context.startActivity(intent)
+                                    }
+                            ) {
                                 ProductItem(product = product)
                             }
                         }
@@ -315,8 +331,8 @@ fun CategoryItem(
                         .size(40.dp)
                         .clip(RoundedCornerShape(8.dp)),
                     contentScale = ContentScale.Fit,
-                    placeholder = painterResource(R.drawable.bell_icon),
-                    error = painterResource(R.drawable.bell_icon),
+                    placeholder = painterResource(R.drawable.loadding),
+                    error = painterResource(R.drawable.error),
                     colorFilter = if (isSelected) ColorFilter.tint(Color.White) else null,
                     onLoading = { isImageLoading = true },
                     onSuccess = {
@@ -352,7 +368,7 @@ fun CategoryItem(
                 }
             } ?: run {
                 Image(
-                    painter = painterResource(R.drawable.bell_icon),
+                    painter = painterResource(R.drawable.loadding),
                     contentDescription = "Placeholder",
                     modifier = Modifier
                         .size(40.dp)
@@ -431,8 +447,8 @@ fun ProductItem(product: ProductItem) {
                         .fillMaxSize(0.9f)
                         .clip(RoundedCornerShape(8.dp)),
                     contentScale = ContentScale.Fit,
-                    placeholder = painterResource(R.drawable.bell_icon),
-                    error = painterResource(R.drawable.bell_icon),
+                    placeholder = painterResource(R.drawable.loadding),
+                    error = painterResource(R.drawable.error),
                     onLoading = { isImageLoading = true },
                     onSuccess = {
                         isImageLoading = false
@@ -468,7 +484,7 @@ fun ProductItem(product: ProductItem) {
                 }
             } ?: run {
                 Image(
-                    painter = painterResource(R.drawable.bell_icon),
+                    painter = painterResource(R.drawable.loadding),
                     contentDescription = "Placeholder",
                     modifier = Modifier
                         .fillMaxSize(0.9f)
@@ -505,8 +521,9 @@ fun ProductItem(product: ProductItem) {
                 fontSize = 12.sp,
                 color = Color(0xFFFFC107)
             )
+            Spacer(modifier = Modifier.width(20.dp))
             Text(
-                text = "$${product.price ?: 0}",
+                text = "${product.price ?: 0} VNĐ",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Black

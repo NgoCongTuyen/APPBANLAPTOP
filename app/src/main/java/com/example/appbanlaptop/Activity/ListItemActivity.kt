@@ -1,9 +1,11 @@
 package com.example.appbanlaptop.Activity
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.appbanlaptop.Model.ProductItem
@@ -22,10 +25,7 @@ import com.google.firebase.database.*
 class ListItemActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Lấy categoryId từ Intent, mặc định là "0" nếu không có
-        val categoryId = intent.getStringExtra("categoryID") ?: "0"
-
+        val categoryId = intent.getStringExtra("CATEGORY_ID") ?: "0"
         setContent {
             ListItemScreen(categoryId = categoryId, onBackClick = { finish() })
         }
@@ -35,19 +35,44 @@ class ListItemActivity : ComponentActivity() {
 @Composable
 fun ListItemScreen(categoryId: String, onBackClick: () -> Unit) {
     val productItems = remember { mutableStateListOf<ProductItem>() }
+    val categoryItems = remember { mutableStateListOf<CategoryItem>() }
+    var categoryTitle by remember { mutableStateOf(categoryId) }
+    val context = LocalContext.current
 
-    // Lấy dữ liệu từ Firebase
     LaunchedEffect(Unit) {
         val database = FirebaseDatabase.getInstance("https://appbanlaptop-default-rtdb.firebaseio.com/")
-        val itemsRef = database.getReference("Items")
+        val categoriesRef = database.getReference("Category")
+        categoriesRef.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                categoryItems.clear()
+                for (item in snapshot.children) {
+                    try {
+                        val categoryItem = item.getValue(CategoryItem::class.java)
+                        if (categoryItem != null) {
+                            categoryItems.add(categoryItem)
+                            if (categoryItem.id.toString() == categoryId) {
+                                categoryTitle = categoryItem.title ?: categoryId
+                            }
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("ListItemScreen", "Error parsing category: ${item.key}, error: ${e.message}")
+                    }
+                }
+            }
 
+            override fun onCancelled(error: DatabaseError) {
+                android.util.Log.e("ListItemScreen", "Firebase error: ${error.message}")
+            }
+        })
+
+        val itemsRef = database.getReference("Items")
         itemsRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 productItems.clear()
                 for (item in snapshot.children) {
                     try {
                         val productItem = item.getValue(ProductItem::class.java)
-                        if (productItem != null && productItem.categoryID == categoryId) {
+                        if (productItem != null && productItem.categoryId == categoryId) {
                             productItems.add(productItem)
                         }
                     } catch (e: Exception) {
@@ -65,7 +90,15 @@ fun ListItemScreen(categoryId: String, onBackClick: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Sản phẩm trong danh mục ${if (categoryId == "0") "Pc" else categoryId}") },
+                title = {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text("$categoryTitle")
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -96,8 +129,19 @@ fun ListItemScreen(categoryId: String, onBackClick: () -> Unit) {
                                 modifier = Modifier
                                     .weight(1f)
                                     .width(150.dp)
+                                    .clickable {
+                                        val intent = Intent(context, DetailsItemsActivity::class.java).apply {
+                                            putExtra("PRODUCT_TITLE", product.title)
+                                            putExtra("PRODUCT_DESCRIPTION", product.description)
+                                            putExtra("PRODUCT_PRICE", product.price ?: 0L)
+                                            putExtra("PRODUCT_RATING", product.rating ?: 0.0)
+                                            putExtra("PRODUCT_PIC_URL", product.picUrl?.firstOrNull())
+                                            putExtra("PRODUCT_MODELS", product.model?.toTypedArray())
+                                        }
+                                        context.startActivity(intent)
+                                    }
                             ) {
-                                ProductItem(product = product) // Hàm ProductItem từ mã cũ
+                                ProductItem(product = product)
                             }
                         }
                         if (pair.size < 2) {

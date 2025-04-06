@@ -40,7 +40,7 @@
         <activity
             android:name=".Activity.ListItemActivity"
             android:exported="false" />
-
+        <activity android:name=".Activity.DetailsItemsActivity" />
     </application>
 
 </manifest>
