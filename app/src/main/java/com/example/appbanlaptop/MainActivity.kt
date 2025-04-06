@@ -522,9 +522,9 @@ fun ProductItem(product: ProductItem) {
                 fontSize = 12.sp,
                 color = Color(0xFFFFC107)
             )
-            Spacer(modifier = Modifier.width(20.dp))
+            Spacer(modifier = Modifier.width(10.dp))
             Text(
-                text = "${product.price ?: 0} VNĐ",
+                text = "${product.price ?: 0} đ",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Black

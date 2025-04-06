@@ -28,7 +28,7 @@ class DetailsItemsActivity : ComponentActivity() {
 
         val title = intent.getStringExtra("PRODUCT_TITLE") ?: "Unknown Product"
         val description = intent.getStringExtra("PRODUCT_DESCRIPTION") ?: "No description available"
-        val price = intent.getLongExtra("PRODUCT_PRICE", 0L)
+        val price = intent.getStringExtra("PRODUCT_PRICE") ?: "0 đ" // Lấy giá trị String, mặc định là "0 VNĐ"
         val rating = intent.getDoubleExtra("PRODUCT_RATING", 0.0)
         val picUrl = intent.getStringExtra("PRODUCT_PIC_URL")
         val models = intent.getStringArrayExtra("PRODUCT_MODELS")?.toList() ?: emptyList()
@@ -51,7 +51,7 @@ class DetailsItemsActivity : ComponentActivity() {
 fun DetailsItemsScreen(
     title: String,
     description: String,
-    price: Long,
+    price: String,
     rating: Double,
     picUrl: String?,
     models: List<String>,
@@ -127,7 +127,7 @@ fun DetailsItemsScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "$$price",
+                    text = "$price",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF6200EE)

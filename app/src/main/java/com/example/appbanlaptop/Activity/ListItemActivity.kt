@@ -135,7 +135,7 @@ fun ListItemScreen(categoryId: String, onBackClick: () -> Unit) {
                                         val intent = Intent(context, DetailsItemsActivity::class.java).apply {
                                             putExtra("PRODUCT_TITLE", product.title)
                                             putExtra("PRODUCT_DESCRIPTION", product.description)
-                                            putExtra("PRODUCT_PRICE", product.price ?: 0L)
+                                            putExtra("PRODUCT_PRICE", product.price)
                                             putExtra("PRODUCT_RATING", product.rating ?: 0.0)
                                             putExtra("PRODUCT_PIC_URL", product.picUrl?.firstOrNull())
                                             putExtra("PRODUCT_MODELS", product.model?.toTypedArray())
