@@ -1,10 +1,14 @@
 package com.example.appbanlaptop.Activity
 
 import android.os.Bundle
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,15 +16,28 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.request.CachePolicy
+import coil.request.ImageRequest
+import com.example.appbanlaptop.Model.CartItem
+import com.example.appbanlaptop.Model.CartManager
+import com.example.appbanlaptop.R
 
 class DetailsItemsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,10 +45,14 @@ class DetailsItemsActivity : ComponentActivity() {
 
         val title = intent.getStringExtra("PRODUCT_TITLE") ?: "Unknown Product"
         val description = intent.getStringExtra("PRODUCT_DESCRIPTION") ?: "No description available"
-        val price = intent.getStringExtra("PRODUCT_PRICE") ?: "0 đ" // Lấy giá trị String, mặc định là "0 VNĐ"
+        val price = intent.getStringExtra("PRODUCT_PRICE") ?: "0 đ"
         val rating = intent.getDoubleExtra("PRODUCT_RATING", 0.0)
         val picUrl = intent.getStringExtra("PRODUCT_PIC_URL")
         val models = intent.getStringArrayExtra("PRODUCT_MODELS")?.toList() ?: emptyList()
+
+        // Log để kiểm tra dữ liệu
+        Log.d("DetailsItemsActivity", "picUrl: $picUrl")
+        Log.d("DetailsItemsActivity", "title: $title , price: $price, models: $models")
 
         setContent {
             DetailsItemsScreen(
@@ -41,7 +62,29 @@ class DetailsItemsActivity : ComponentActivity() {
                 rating = rating,
                 picUrl = picUrl,
                 models = models,
-                onBackClick = { finish() }
+                onBackClick = { finish() },
+                onAddToCartClick = {
+                    // Xử lý thêm vào giỏ hàng
+                    // Loại bỏ tất cả dấu chấm (dùng để phân tách hàng nghìn) và các ký tự không phải số
+                    val cleanedPrice = price.replace("[^0-9]".toRegex(), "") // Chỉ giữ lại số
+                    Log.d("DetailsItemsActivity", "Cleaned price: $cleanedPrice")
+
+                    val priceValue = cleanedPrice.toDoubleOrNull() ?: 0.0
+                    Log.d("DetailsItemsActivity", "Parsed priceValue: $priceValue")
+
+                    val cartItem = CartItem(
+                        id = (CartManager.getCartItems().size + 1), // Tạo ID mới
+                        title = title,
+                        details = "", // Không cần description, để trống
+                        price = priceValue,
+                        imageUrl = picUrl,
+                        quantity = 1,
+                        isSelected = true
+                    )
+                    CartManager.addCartItem(cartItem)
+                    Toast.makeText(this, "Đã thêm $title vào giỏ hàng", Toast.LENGTH_SHORT).show()
+                },
+                onBuyNowClick = { /* TODO: Thêm logic mua ngay */ }
             )
         }
     }
@@ -55,7 +98,9 @@ fun DetailsItemsScreen(
     rating: Double,
     picUrl: String?,
     models: List<String>,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onAddToCartClick: () -> Unit,
+    onBuyNowClick: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -71,7 +116,12 @@ fun DetailsItemsScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            painter = painterResource(R.drawable.back),
+                            contentDescription = "Back",
+                            modifier = Modifier.size(40.dp),
+                            tint = Color.Unspecified
+                        )
                     }
                 },
                 backgroundColor = Color(0xFF6200EE),
@@ -79,111 +129,227 @@ fun DetailsItemsScreen(
             )
         }
     ) { paddingValues ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.White)
                 .padding(paddingValues)
-                .padding(16.dp),
+                .padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Hình ảnh sản phẩm
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(300.dp)
-                    .background(Color(0xFFE0E0E0)),
-                contentAlignment = Alignment.Center
-            ) {
-                picUrl?.let { url ->
-                    AsyncImage(
-                        model = url,
-                        contentDescription = title,
-                        modifier = Modifier
-                            .fillMaxSize(0.9f)
-                            .background(Color.White),
-                        contentScale = ContentScale.Fit
-                    )
-                } ?: Text("No Image", color = Color.Gray, fontSize = 16.sp)
-            }
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(300.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.White)
+                        .border(
+                            width = 1.dp,
+                            color = Color(0xFFCCCCCC),
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                        .shadow(4.dp, RoundedCornerShape(16.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (picUrl != null && picUrl.isNotEmpty()) {
+                        var isImageLoading by remember(picUrl) { mutableStateOf(true) }
+                        var isImageError by remember(picUrl) { mutableStateOf(false) }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(picUrl)
+                                .memoryCachePolicy(CachePolicy.ENABLED)
+                                .diskCachePolicy(CachePolicy.ENABLED)
+                                .build(),
+                            contentDescription = title,
+                            modifier = Modifier
+                                .fillMaxSize(0.8f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color.White),
+                            contentScale = ContentScale.Fit,
+                            placeholder = painterResource(R.drawable.loadding),
+                            error = painterResource(R.drawable.error),
+                            onLoading = { isImageLoading = true },
+                            onSuccess = {
+                                isImageLoading = false
+                                isImageError = false
+                            },
+                            onError = { state ->
+                                isImageLoading = false
+                                isImageError = true
+                                Log.e("DetailsItemsScreen", "Error loading image: $picUrl, error: ${state.result.throwable.message}")
+                            }
+                        )
+
+                        if (isImageLoading) {
+                            Text(
+                                text = "Đang tải...",
+                                fontSize = 14.sp,
+                                color = Color.Gray,
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .background(Color.White.copy(alpha = 0.7f))
+                                    .padding(4.dp)
+                            )
+                        } else if (isImageError) {
+                            Text(
+                                text = "Lỗi tải hình ảnh",
+                                fontSize = 14.sp,
+                                color = Color.Red,
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .background(Color.White.copy(alpha = 0.7f))
+                                    .padding(4.dp)
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = "Không có hình ảnh",
+                            color = Color.Gray,
+                            fontSize = 16.sp,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+                }
+            }
 
             // Tiêu đề
-            Text(
-                text = title,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Giá và đánh giá
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "$price",
-                    fontSize = 20.sp,
+                    text = title,
+                    fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF6200EE)
-                )
-                Text(
-                    text = "⭐ $rating",
-                    fontSize = 18.sp,
-                    color = Color(0xFFFFC107)
+                    color = Color.Black,
+                    textAlign = TextAlign.Center
                 )
             }
 
-
-            Spacer(modifier = Modifier.height(16.dp))
+            // Giá và đánh giá
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = price,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFFF0000)
+                    )
+                    Text(
+                        text = "⭐ $rating",
+                        fontSize = 18.sp,
+                        color = Color(0xFFFFC107)
+                    )
+                }
+            }
 
             // Mô tả
-            Text(
-                text = "Description",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black
-            )
-            Text(
-                text = description,
-                fontSize = 16.sp,
-                color = Color.Gray,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Các mô hình (model)
-            if (models.isNotEmpty()) {
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Available Models",
+                    text = "Description",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.Black
                 )
-                LazyRow(
-                    modifier = Modifier.padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(models) { model ->
-                        Surface(
-                            color = Color(0xFFF5F5F5),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text(
-                                text = model,
-                                fontSize = 14.sp,
-                                color = Color.Black,
-                                modifier = Modifier.padding(8.dp)
-                            )
+                Text(
+                    text = description,
+                    fontSize = 16.sp,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+
+            // Các mô hình (model)
+            if (models.isNotEmpty()) {
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Available Models",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    LazyRow(
+                        modifier = Modifier.padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(models) { model ->
+                            Surface(
+                                modifier = Modifier.padding(5.dp),
+                                color = Color(0xFFF5F5F5),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    text = model,
+                                    fontSize = 14.sp,
+                                    color = Color.Black,
+                                    modifier = Modifier.padding(8.dp)
+                                )
+                            }
                         }
                     }
                 }
+            }
+
+            // Nút Add to Cart và Buy Now
+            item {
+                Spacer(modifier = Modifier.height(20.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    // Nút Add to Cart
+                    Button(
+                        onClick = onAddToCartClick,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .padding(end = 8.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            backgroundColor = Color(0xFFCCCCCC),
+                            contentColor = Color.Black
+                        )
+                    ) {
+                        Text(
+                            text = "Add to Cart",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    // Nút Buy Now
+                    Button(
+                        onClick = onBuyNowClick,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .padding(start = 8.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            backgroundColor = Color(0xFFFF0000),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text(
+                            text = "Buy Now",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp)) // Khoảng cách dưới cùng
             }
         }
     }

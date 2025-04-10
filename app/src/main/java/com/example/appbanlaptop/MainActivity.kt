@@ -8,6 +8,7 @@ import android.view.View
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -35,7 +36,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -64,18 +64,17 @@ import com.example.appbanlaptop.Activity.ListItemActivity
 import com.example.appbanlaptop.Cart.CartScreenActivity
 
 import com.example.appbanlaptop.Model.ProductItem
+import com.example.appbanlaptop.ViewModel.MainViewModel
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.rememberPagerState
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
-import kotlinx.coroutines.InternalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-class MainActivity :  ComponentActivity() {
+class MainActivity : ComponentActivity() {
+    // Khởi tạo ViewModel
+    private val viewModel: MainViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -85,45 +84,17 @@ class MainActivity :  ComponentActivity() {
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
 
         setContent {
-            MainActivityScreen {
-                val productItems = remember { mutableStateListOf<ProductItem>() }
-
-                // Lấy dữ liệu từ Firebase
-                LaunchedEffect(Unit) {
-                    val database = FirebaseDatabase.getInstance("https://appbanlaptop-default-rtdb.firebaseio.com/")
-                    val itemsRef = database.getReference("Items")
-
-                    itemsRef.addListenerForSingleValueEvent(object : ValueEventListener {
-                        override fun onDataChange(snapshot: DataSnapshot) {
-                            productItems.clear()
-                            if (snapshot.exists()) {
-                                for (item in snapshot.children) {
-                                    try {
-                                        val productItem = item.getValue(ProductItem::class.java)
-                                        if (productItem != null) {
-                                            productItems.add(productItem)
-                                            Log.d("FirebaseData", "Loaded item: ${productItem.title}")
-                                        }
-                                    } catch (e: Exception) {
-                                        Log.e("FirebaseError", "Error parsing item: ${item.key}, error: ${e.message}")
-                                    }
-                                }
-                                Log.d("FirebaseData", "Total items loaded: ${productItems.size}")
-                            } else {
-                                Log.e("FirebaseData", "No data found in Items")
-                            }
-                        }
-
-                        override fun onCancelled(error: DatabaseError) {
-                            Log.e("FirebaseError", "Firebase error: ${error.message}")
-                        }
-                    })
+            MainActivityScreen(
+                productItems = viewModel.productItems,
+                categories = viewModel.categories,
+                onCartClick = {
+                    val intent = Intent(this, CartScreenActivity::class.java)
+                    startActivity(intent)
                 }
-            }
+            )
         }
     }
 }
-
 
 data class CategoryItem(
     val id: Int? = null,
@@ -132,57 +103,13 @@ data class CategoryItem(
 )
 
 
-@OptIn(InternalCoroutinesApi::class)
 @Composable
-fun MainActivityScreen(onCartClick: @Composable () -> Unit) {
-    val categories = remember { mutableStateListOf<CategoryItem>() }
-    val productItems = remember { mutableStateListOf<ProductItem>() }
-    val context = LocalContext.current // Lấy context để khởi động Intent
-
-    LaunchedEffect(Unit) {
-        val database = FirebaseDatabase.getInstance("https://appbanlaptop-default-rtdb.firebaseio.com/")
-        val categoriesRef = database.getReference("Category")
-        categoriesRef.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                categories.clear()
-                for (item in snapshot.children) {
-                    try {
-                        val categoryItem = item.getValue(CategoryItem::class.java)
-                        if (categoryItem != null) {
-                            categories.add(categoryItem)
-                        }
-                    } catch (e: Exception) {
-                        Log.e("MainActivityScreen", "Error parsing category: ${item.key}, error: ${e.message}")
-                    }
-                }
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.e("MainActivityScreen", "Firebase error: ${error.message}")
-            }
-        })
-
-        val itemsRef = database.getReference("Items")
-        itemsRef.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                productItems.clear()
-                for (item in snapshot.children) {
-                    try {
-                        val productItem = item.getValue(ProductItem::class.java)
-                        if (productItem != null) {
-                            productItems.add(productItem)
-                        }
-                    } catch (e: Exception) {
-                        Log.e("MainActivityScreen", "Error parsing item: ${item.key}, error: ${e.message}")
-                    }
-                }
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.e("MainActivityScreen", "Firebase error: ${error.message}")
-            }
-        })
-    }
+fun MainActivityScreen(
+    productItems: List<ProductItem>,
+    categories: List<CategoryItem>,
+    onCartClick: @Composable () -> Unit
+) {
+    val context = LocalContext.current
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -243,7 +170,6 @@ fun MainActivityScreen(onCartClick: @Composable () -> Unit) {
                                     .weight(1f)
                                     .width(150.dp)
                                     .clickable {
-                                        // Mở DetailsItemsActivity khi nhấn vào sản phẩm
                                         val intent = Intent(context, DetailsItemsActivity::class.java).apply {
                                             putExtra("PRODUCT_TITLE", product.title)
                                             putExtra("PRODUCT_DESCRIPTION", product.description)
@@ -328,8 +254,8 @@ fun CategoryItem(
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(imageUrl)
-                        .memoryCachePolicy(CachePolicy.DISABLED)
-                        .diskCachePolicy(CachePolicy.DISABLED)
+                        .memoryCachePolicy(CachePolicy.ENABLED) // Bật bộ nhớ đệm
+                        .diskCachePolicy(CachePolicy.ENABLED)   // Bật bộ nhớ đệm trên đĩa
                         .build(),
                     contentDescription = item.title,
                     modifier = Modifier
@@ -444,8 +370,8 @@ fun ProductItem(product: ProductItem) {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(imageUrl)
-                        .memoryCachePolicy(CachePolicy.DISABLED) // Vô hiệu hóa bộ nhớ đệm
-                        .diskCachePolicy(CachePolicy.DISABLED) // Vô hiệu hóa bộ nhớ đệm trên đĩa
+                        .memoryCachePolicy(CachePolicy.ENABLED) // Bật bộ nhớ đệm
+                        .diskCachePolicy(CachePolicy.ENABLED)   // Bật bộ nhớ đệm trên đĩa
                         .build(),
                     contentDescription = product.title,
                     modifier = Modifier

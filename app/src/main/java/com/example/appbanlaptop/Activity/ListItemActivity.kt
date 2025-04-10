@@ -17,11 +17,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.appbanlaptop.CategoryItem
 import com.example.appbanlaptop.Model.ProductItem
 import com.example.appbanlaptop.ProductItem
+import com.example.appbanlaptop.R
 import com.google.firebase.database.*
 
 class ListItemActivity : ComponentActivity() {
@@ -103,7 +105,12 @@ fun ListItemScreen(categoryId: String, onBackClick: () -> Unit) {
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            painter = painterResource(R.drawable.back),
+                            contentDescription = "Back",
+                            modifier = Modifier.size(40.dp),
+                            tint = Color.Unspecified
+                        )
                     }
                 },
                 backgroundColor = Color(0xFF6200EE),
