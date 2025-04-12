@@ -15,7 +15,7 @@
         android:theme="@style/Theme.APPBANLAPTOP"
         tools:targetApi="31">
         <activity
-            android:name=".Activity.ListItemsActivity"
+            android:name=".Activity.ListItemActivity"
             android:exported="false" />
         <activity
             android:name=".Activity.IntroActivity"
@@ -37,10 +37,9 @@
             android:label="@string/app_name"
             android:theme="@style/Theme.APPBANLAPTOP" />
         <activity android:name=".Cart.CartScreenActivity" />
-        <activity
-            android:name=".Activity.ListItemActivity"
-            android:exported="false" />
         <activity android:name=".Activity.DetailsItemsActivity" />
+        <activity android:name=".Activity.LoginActivity" />
+        <activity android:name=".Activity.SignUpActivity" />
     </application>
 
 </manifest>

@@ -68,12 +68,15 @@ import com.example.appbanlaptop.ViewModel.MainViewModel
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.rememberPagerState
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     // Khởi tạo ViewModel
     private val viewModel: MainViewModel by viewModels()
+    val currentUser = FirebaseAuth.getInstance().currentUser
+    val username = currentUser?.displayName ?: currentUser?.email?.substringBefore("@") ?: "User"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -90,7 +93,8 @@ class MainActivity : ComponentActivity() {
                 onCartClick = {
                     val intent = Intent(this, CartScreenActivity::class.java)
                     startActivity(intent)
-                }
+                },
+                username = username,
             )
         }
     }
@@ -107,6 +111,7 @@ data class CategoryItem(
 fun MainActivityScreen(
     productItems: List<ProductItem>,
     categories: List<CategoryItem>,
+    username: String, // Thêm tham số username để hiển thị tên tài khoản Google
     onCartClick: @Composable () -> Unit
 ) {
     val context = LocalContext.current
@@ -139,7 +144,12 @@ fun MainActivityScreen(
                 ) {
                     Column {
                         Text(text = "Welcome Back", fontSize = 16.sp, color = Color.Gray)
-                        Text(text = "Jackie", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                        Text(
+                            text = username, // Sử dụng username từ tham số
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black
+                        )
                     }
                     Row {
                         Image(painter = painterResource(R.drawable.fav_icon), contentDescription = "Favorite", modifier = Modifier.size(24.dp))

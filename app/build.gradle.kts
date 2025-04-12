@@ -44,6 +44,23 @@ android {
 }
 
 dependencies {
+
+
+// Firebase Authentication
+    implementation ("com.google.firebase:firebase-auth")
+
+// Firebase Realtime Database
+    implementation ("com.google.firebase:firebase-database")
+
+// Google Sign-In
+    implementation ("com.google.android.gms:play-services-auth:20.7.0")
+
+// Credential Manager cho đăng nhập Google
+    implementation ("androidx.credentials:credentials:1.3.0")
+    implementation ("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation ("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+
+    implementation ("androidx.compose.material:material-icons-extended:1.6.8")
     implementation ("androidx.navigation:navigation-compose:2.7.4")
 
     implementation(libs.androidx.room.ktx)
@@ -77,6 +94,7 @@ dependencies {
     implementation(libs.firebase.database.ktx)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.espresso.core)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
