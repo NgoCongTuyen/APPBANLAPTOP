@@ -2,7 +2,6 @@ package com.example.appbanlaptop.Activity
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,16 +28,25 @@ class LoginActivity : ComponentActivity() {
             val account = task.getResult(ApiException::class.java)
             firebaseAuthWithGoogle(account.idToken!!)
         } catch (e: ApiException) {
-            Log.e("GoogleSignInError", "Google Sign-In failed: ${e.statusCode} - ${e.message}", e)
-            viewModel.errorMessage.value = "Google Sign-In failed: ${e.statusCode} - ${e.message}"        }
+            viewModel.errorMessage.value = "Google Sign-In failed: ${e.message}"
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Kiểm tra trạng thái đăng nhập
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser != null) {
+            // Nếu đã đăng nhập, chuyển hướng ngay đến MainActivity
+            startActivity(Intent(this, MainActivity::class.java))
+            finish()
+            return
+        }
+
         // Khởi tạo Google Sign-In
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken("312176967841-vi09lepvd4htvomtt475t5krk8qhd71b.apps.googleusercontent.com")
+            .requestIdToken(getString(R.string.default_web_client_id))
             .requestEmail()
             .build()
         googleSignInClient = GoogleSignIn.getClient(this, gso)
@@ -60,6 +68,15 @@ class LoginActivity : ComponentActivity() {
                     },
                     onGoogleSignInClicked = {
                         signInWithGoogle()
+                    },
+                    onLogoutClicked = {
+                        // Xử lý đăng xuất
+                        FirebaseAuth.getInstance().signOut()
+                        googleSignInClient.signOut().addOnCompleteListener {
+                            // Sau khi đăng xuất, quay lại màn hình đăng nhập
+                            startActivity(Intent(this, LoginActivity::class.java))
+                            finish()
+                        }
                     }
                 )
             }
@@ -71,7 +88,6 @@ class LoginActivity : ComponentActivity() {
         FirebaseAuth.getInstance().signInWithCredential(credential)
             .addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
-                    Log.d("FirebaseAuth", "Google Sign-In successful")
                     val user = FirebaseAuth.getInstance().currentUser
                     user?.let {
                         // Lưu thông tin người dùng vào Realtime Database
@@ -93,8 +109,8 @@ class LoginActivity : ComponentActivity() {
                             }
                     }
                 } else {
-                    Log.e("FirebaseAuth", "Authentication failed: ${task.exception?.message}", task.exception)
-                    viewModel.errorMessage.value = "Authentication failed: ${task.exception?.message}"                }
+                    viewModel.errorMessage.value = "Authentication failed: ${task.exception?.message}"
+                }
             }
     }
 

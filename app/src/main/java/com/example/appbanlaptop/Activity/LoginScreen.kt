@@ -31,8 +31,9 @@ import com.example.appbanlaptop.R
 fun LoginScreen(
     viewModel: LoginViewModel,
     onLoginSuccess: () -> Unit,
-    onSignUpClicked: () -> Unit, // Callback cho Sign Up
-    onGoogleSignInClicked: () -> Unit // Callback cho Google Sign-In
+    onSignUpClicked: () -> Unit,
+    onGoogleSignInClicked: () -> Unit,
+    onLogoutClicked: () -> Unit // Giữ lại callback nhưng không sử dụng ở đây
 ) {
     Column(
         modifier = Modifier
@@ -200,7 +201,7 @@ fun LoginScreen(
                 .clickable { viewModel.onSignUpClicked(onSignUpClicked) },
             textAlign = TextAlign.Center
         )
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         // Phần "OR"
         Text(

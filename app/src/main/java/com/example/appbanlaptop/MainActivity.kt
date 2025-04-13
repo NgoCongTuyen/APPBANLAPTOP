@@ -61,6 +61,7 @@ import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.example.appbanlaptop.Activity.DetailsItemsActivity
 import com.example.appbanlaptop.Activity.ListItemActivity
+import com.example.appbanlaptop.Activity.ProfileActivity
 import com.example.appbanlaptop.Cart.CartScreenActivity
 
 import com.example.appbanlaptop.Model.ProductItem
@@ -596,8 +597,12 @@ fun BottomMenu(
             text = "Order"
         )
         BottomMenuItem(
-            icon = painterResource(R.drawable.btn_5),
-            text = "Profile"
+            icon = painterResource(id = R.drawable.btn_5),
+            text = "Profile",
+            onItemClick = {
+                // Điều hướng đến ProfileActivity
+                context.startActivity(Intent(context, ProfileActivity::class.java))
+            }
         )
     }
 }

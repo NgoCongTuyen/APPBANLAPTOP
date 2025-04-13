@@ -28,7 +28,6 @@ class LoginViewModel : ViewModel() {
             }
     }
 
-    // Callback để thông báo khi nhấn "Sign Up"
     fun onSignUpClicked(onSignUpClicked: () -> Unit) {
         onSignUpClicked()
     }
@@ -48,10 +47,14 @@ class LoginViewModel : ViewModel() {
         }
     }
 
-    // Callback để thông báo khi nhấn đăng nhập bằng Google
     fun onSocialLoginClicked(provider: String, onGoogleSignInClicked: () -> Unit) {
         if (provider == "Google") {
             onGoogleSignInClicked()
         }
+    }
+
+    // Thêm phương thức đăng xuất
+    fun onLogoutClicked(onLogoutClicked: () -> Unit) {
+        onLogoutClicked()
     }
 }
