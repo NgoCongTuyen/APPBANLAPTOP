@@ -38,10 +38,19 @@ import coil.request.ImageRequest
 import com.example.appbanlaptop.Model.CartItem
 import com.example.appbanlaptop.Model.CartManager
 import com.example.appbanlaptop.R
+import com.google.firebase.auth.FirebaseAuth
 
 class DetailsItemsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Kiểm tra xem người dùng đã đăng nhập chưa
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser == null) {
+            Toast.makeText(this, "Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng", Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
 
         val title = intent.getStringExtra("PRODUCT_TITLE") ?: "Unknown Product"
         val description = intent.getStringExtra("PRODUCT_DESCRIPTION") ?: "No description available"
@@ -50,9 +59,8 @@ class DetailsItemsActivity : ComponentActivity() {
         val picUrl = intent.getStringExtra("PRODUCT_PIC_URL")
         val models = intent.getStringArrayExtra("PRODUCT_MODELS")?.toList() ?: emptyList()
 
-        // Log để kiểm tra dữ liệu
         Log.d("DetailsItemsActivity", "picUrl: $picUrl")
-        Log.d("DetailsItemsActivity", "title: $title , price: $price, models: $models")
+        Log.d("DetailsItemsActivity", "title: $title, price: $price, models: $models")
 
         setContent {
             DetailsItemsScreen(
@@ -65,28 +73,34 @@ class DetailsItemsActivity : ComponentActivity() {
                 onBackClick = { finish() },
                 onAddToCartClick = {
                     // Xử lý thêm vào giỏ hàng
-                    // Loại bỏ tất cả dấu chấm (dùng để phân tách hàng nghìn) và các ký tự không phải số
-                    val cleanedPrice = price.replace("[^0-9]".toRegex(), "") // Chỉ giữ lại số
+                    val cleanedPrice = price.replace("[^0-9]".toRegex(), "")
                     Log.d("DetailsItemsActivity", "Cleaned price: $cleanedPrice")
 
                     val priceValue = cleanedPrice.toDoubleOrNull() ?: 0.0
                     Log.d("DetailsItemsActivity", "Parsed priceValue: $priceValue")
 
                     val cartItem = CartItem(
-                        id = (CartManager.getCartItems().size + 1), // Tạo ID mới
+                        id = 0, // ID sẽ được tạo trong CartManager
                         title = title,
-                        details = "", // Không cần description, để trống
+                        details = description,
                         price = priceValue,
                         imageUrl = picUrl,
                         quantity = 1,
                         isSelected = true
                     )
+                    Log.d("DetailsItemsActivity", "Adding cart item: $cartItem")
                     CartManager.addCartItem(cartItem)
                     Toast.makeText(this, "Đã thêm $title vào giỏ hàng", Toast.LENGTH_SHORT).show()
                 },
                 onBuyNowClick = { /* TODO: Thêm logic mua ngay */ }
             )
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Dọn dẹp listener khi Activity bị hủy
+        CartManager.cleanup()
     }
 }
 
@@ -164,7 +178,7 @@ fun DetailsItemsScreen(
                                 .memoryCachePolicy(CachePolicy.ENABLED)
                                 .diskCachePolicy(CachePolicy.ENABLED)
                                 .build(),
-                            contentDescription = title,
+                           contentDescription = "",
                             modifier = Modifier
                                 .fillMaxSize(0.8f)
                                 .clip(RoundedCornerShape(12.dp))

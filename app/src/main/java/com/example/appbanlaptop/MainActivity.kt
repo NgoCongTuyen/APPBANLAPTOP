@@ -30,6 +30,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -62,10 +63,11 @@ import coil.request.ImageRequest
 import com.example.appbanlaptop.Activity.DetailsItemsActivity
 import com.example.appbanlaptop.Activity.ListItemActivity
 import com.example.appbanlaptop.Activity.ProfileActivity
-import com.example.appbanlaptop.Cart.CartScreenActivity
+
 
 import com.example.appbanlaptop.Model.ProductItem
 import com.example.appbanlaptop.ViewModel.MainViewModel
+import com.example.appbanlaptop.cart.CartScreenActivity
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.rememberPagerState
@@ -74,7 +76,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
-    // Khởi tạo ViewModel
     private val viewModel: MainViewModel by viewModels()
     val currentUser = FirebaseAuth.getInstance().currentUser
     val username = currentUser?.displayName ?: currentUser?.email?.substringBefore("@") ?: "User"
@@ -82,7 +83,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Thiết lập giao diện thanh trạng thái
         window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
         window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
@@ -96,6 +96,7 @@ class MainActivity : ComponentActivity() {
                     startActivity(intent)
                 },
                 username = username,
+                isLoadingItems = viewModel.isLoadingItems // Truyền trạng thái tải
             )
         }
     }
@@ -112,10 +113,12 @@ data class CategoryItem(
 fun MainActivityScreen(
     productItems: List<ProductItem>,
     categories: List<CategoryItem>,
-    username: String, // Thêm tham số username để hiển thị tên tài khoản Google
-    onCartClick: @Composable () -> Unit
+    username: String,
+    onCartClick: @Composable () -> Unit,
+    isLoadingItems: Boolean // Thêm tham số
 ) {
     val context = LocalContext.current
+    val recommendedProducts = productItems.filter { it.showRecommended == true }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -139,14 +142,14 @@ fun MainActivityScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
+                        .padding(horizontal = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
                         Text(text = "Welcome Back", fontSize = 16.sp, color = Color.Gray)
                         Text(
-                            text = username, // Sử dụng username từ tham số
+                            text = username,
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.Black
@@ -165,14 +168,29 @@ fun MainActivityScreen(
             item { SectionTitle("Categories", "See All") }
             item { CategoryList(categories, context) }
 
-            item { SectionTitle("Recommendation", "See All") }
-            if (productItems.isNotEmpty()) {
-                items(productItems.chunked(2)) { pair ->
+            item { SectionTitle("Recommended Products", "See All") }
+            if (isLoadingItems) {
+                item {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(10.dp)
+                            .wrapContentSize(Alignment.Center)
+                    )
+                    Text(
+                        text = "Đang tải danh sách sản phẩm...",
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(8.dp)
+                    )
+                }
+            } else if (recommendedProducts.isNotEmpty()) {
+                items(recommendedProducts.chunked(2)) { pair ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         pair.forEach { product ->
@@ -184,10 +202,11 @@ fun MainActivityScreen(
                                         val intent = Intent(context, DetailsItemsActivity::class.java).apply {
                                             putExtra("PRODUCT_TITLE", product.title)
                                             putExtra("PRODUCT_DESCRIPTION", product.description)
-                                            putExtra("PRODUCT_PRICE", product.price ?: 0L)
+                                            putExtra("PRODUCT_PRICE", product.price ?: "0 đ")
                                             putExtra("PRODUCT_RATING", product.rating ?: 0.0)
                                             putExtra("PRODUCT_PIC_URL", product.picUrl?.firstOrNull())
                                             putExtra("PRODUCT_MODELS", product.model?.toTypedArray())
+                                            putExtra("PRODUCT_CATEGORY_ID", product.categoryId)
                                         }
                                         context.startActivity(intent)
                                     }
@@ -196,14 +215,14 @@ fun MainActivityScreen(
                             }
                         }
                         if (pair.size < 2) {
-                            Spacer(modifier = Modifier.weight(1f))
+                            Spacer(modifier = Modifier.weight(0.6f))
                         }
                     }
                 }
             } else {
                 item {
                     Text(
-                        text = "Đang tải danh sách sản phẩm...",
+                        text = "Không có sản phẩm được đề xuất",
                         color = Color.Gray,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth().padding(16.dp)
@@ -213,7 +232,6 @@ fun MainActivityScreen(
         }
     }
 }
-
 @Composable
 fun CategoryList(categories: List<CategoryItem>, context: Context) {
     var selectedIndex by remember { mutableStateOf(-1) }
