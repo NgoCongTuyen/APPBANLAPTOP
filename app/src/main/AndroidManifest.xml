@@ -36,11 +36,8 @@
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.APPBANLAPTOP" />
-<<<<<<< HEAD
-        <activity android:name=".Activity.CartScreenActivity" />
-=======
         <activity android:name=".cart.CartScreenActivity" />
->>>>>>> 4ebca63d87ebb8991d27c1d60c6daa5956b24c9e
+
         <activity android:name=".Activity.DetailsItemsActivity" />
         <activity android:name=".Activity.LoginActivity" />
         <activity android:name=".Activity.SignUpActivity" />

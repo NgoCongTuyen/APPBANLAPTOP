@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -36,7 +37,9 @@ import com.example.appbanlaptop.R
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.zIndex
 import com.example.appbanlaptop.Activity.BottomActivity
+import com.example.appbanlaptop.payment.PaymentActivity
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -144,11 +147,7 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
         bottomBar = {
             BottomActivity.BottomMenu(
                 onItemClick = {
-                    // Kiểm tra xem context hiện tại có phải là CartScreenActivity không
-                    if (context !is CartScreenActivity) {
-                        val intent = Intent(context, CartScreenActivity::class.java)
-                        context.startActivity(intent)
-                    }
+
                 }
             )
         },
@@ -230,23 +229,33 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
                         Spacer(modifier = Modifier.height(8.dp))
                     }
 
-                    // Nút "Check Out"
+                    // Trong LazyColumn của CartScreen
                     item {
                         Button(
                             onClick = {
                                 val itemsToCheckout = cartItems.filter { it.isSelected }
+                                Log.d("CartScreen", "Check Out clicked, selected items: ${itemsToCheckout.size}, items: $itemsToCheckout")
                                 if (itemsToCheckout.isNotEmpty()) {
-                                    Log.d("CartScreen", "Checkout clicked with ${itemsToCheckout.size} items")
-                                    Toast.makeText(context, "Tính năng thanh toán đang được phát triển", Toast.LENGTH_SHORT).show()
+                                    Log.d("CartScreen", "Navigating to PaymentActivity with total: $selectedItemsTotal")
+                                    val intent = Intent(context, PaymentActivity::class.java).apply {
+                                        putParcelableArrayListExtra("CHECKOUT_ITEMS", ArrayList(itemsToCheckout))
+                                        putExtra("TOTAL_PRICE", selectedItemsTotal) // selectedItemsTotal là Double
+                                    }
+                                    context.startActivity(intent)
                                 } else {
+                                    Log.d("CartScreen", "No items selected for checkout")
                                     Toast.makeText(context, "Vui lòng chọn ít nhất một sản phẩm để thanh toán", Toast.LENGTH_SHORT).show()
                                 }
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp),
+                                .padding(16.dp)
+                                .height(48.dp) // Đảm bảo nút đủ lớn
+                                .zIndex(1f), // Đảm bảo nút không bị che
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4A6FF0)),
-                            enabled = cartItems.any { it.isSelected }
+                            enabled = cartItems.any { it.isSelected }.also {
+                                Log.d("CartScreen", "Check Out button enabled: $it, selected items: ${cartItems.filter { it.isSelected }}")
+                            }
                         ) {
                             val formattedTotal = numberFormat.format(selectedItemsTotal)
                             Text(
@@ -288,8 +297,14 @@ fun CartItemCard(
             // Selection checkbox
             Checkbox(
                 checked = cartItem.isSelected,
-                onCheckedChange = onSelectChange,
-                modifier = Modifier.padding(end = 4.dp)
+                onCheckedChange = { isChecked ->
+                    Log.d("CartItemCard", "Checkbox clicked for ${cartItem.title}, new state: $isChecked, firebaseKey: ${cartItem.firebaseKey}")
+                    onSelectChange(isChecked)
+                },
+                modifier = Modifier
+                    .padding(end = 8.dp)
+                    .size(28.dp) // Tăng kích thước để dễ nhấn
+                    .background(Color.Transparent, RoundedCornerShape(4.dp)) // Đảm bảo không bị che
             )
 
             // Hiển thị hình ảnh sản phẩm
@@ -351,7 +366,7 @@ fun CartItemCard(
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
                     maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))

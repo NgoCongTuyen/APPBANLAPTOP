@@ -53,7 +53,12 @@ object BottomActivity {
             BottomMenuItem(
                 icon = painterResource(R.drawable.btn_2),
                 text = "Cart",
-                onItemClick = onItemClick
+                onItemClick = {
+                    if (context !is CartScreenActivity) {
+                        val intent = Intent(context, CartScreenActivity::class.java)
+                        context.startActivity(intent)
+                    }
+                }
             )
             BottomMenuItem(
                 icon = painterResource(R.drawable.btn_4),
@@ -63,7 +68,10 @@ object BottomActivity {
                 icon = painterResource(id = R.drawable.btn_5),
                 text = "Profile",
                 onItemClick = {
-                    context.startActivity(Intent(context, ProfileActivity::class.java))
+                    if (context !is ProfileActivity) {
+                        val intent = Intent(context, ProfileActivity::class.java)
+                        context.startActivity(intent)
+                    }
                 }
             )
         }

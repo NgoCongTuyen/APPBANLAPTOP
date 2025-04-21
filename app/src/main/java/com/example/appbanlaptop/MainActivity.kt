@@ -51,15 +51,20 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
+import com.example.appbanlaptop.Activity.BottomActivity.BottomMenu
 import com.example.appbanlaptop.Activity.DetailsItemsActivity
 import com.example.appbanlaptop.Activity.ListItemActivity
 import com.example.appbanlaptop.Activity.ProfileActivity
@@ -381,7 +386,7 @@ fun ProductItem(product: ProductItem) {
             .width(150.dp)
             .height(220.dp)
             .background(Color(0xFFF5F5F5), shape = RoundedCornerShape(12.dp))
-            .padding(16.dp),
+            .padding(14.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
@@ -483,10 +488,20 @@ fun ProductItem(product: ProductItem) {
             )
             Spacer(modifier = Modifier.width(10.dp))
             Text(
-                text = "${product.price ?: 0} đ",
-                fontSize = 14.sp,
+                text = buildAnnotatedString {
+                    append("${product.price ?: 0}")
+                    withStyle(
+                        style = SpanStyle(
+                            fontSize = 10.sp,
+                            baselineShift = BaselineShift.Superscript
+                        )
+                    ) {
+                        append("đ")
+                    }
+                },
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.Black
+                color = Color.Red
             )
         }
     }
@@ -581,79 +596,3 @@ fun DotIndicator(
 }
 
 
-@Composable
-fun BottomMenu(
-    modifier: Modifier = Modifier,
-    onItemClick: () -> Unit
-) {
-    val context = LocalContext.current
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-            .background(
-                color = colorResource(R.color.purple),
-                shape = RoundedCornerShape(10.dp)
-            ),
-        horizontalArrangement = Arrangement.SpaceEvenly
-    ) {
-        BottomMenuItem(
-            icon = painterResource(R.drawable.btn_1),
-            text = "Explore"
-        )
-        BottomMenuItem(
-            icon = painterResource(R.drawable.btn_2),
-            text = "Cart",
-            onItemClick = onItemClick
-        )
-        BottomMenuItem(
-            icon = painterResource(R.drawable.btn_3),
-            text = "Favorite"
-        )
-        BottomMenuItem(
-            icon = painterResource(R.drawable.btn_4),
-            text = "Order"
-        )
-        BottomMenuItem(
-            icon = painterResource(id = R.drawable.btn_5),
-            text = "Profile",
-            onItemClick = {
-                // Điều hướng đến ProfileActivity
-                context.startActivity(Intent(context, ProfileActivity::class.java))
-            }
-        )
-    }
-}
-
-@Composable
-fun BottomMenuItem(
-    icon: Painter,
-    text: String,
-    onItemClick: (() -> Unit)? = null
-) {
-    Column(
-        modifier = Modifier
-            .height(60.dp)
-            .clickable(
-                enabled = onItemClick != null,
-                onClick = { onItemClick?.invoke() }
-            )
-            .padding(8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(
-            painter = icon,
-            contentDescription = text,
-            tint = Color.White,
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = text,
-            color = Color.White,
-            fontSize = 10.sp,
-            textAlign = TextAlign.Center
-        )
-    }
-}

@@ -130,13 +130,13 @@ fun ListItemScreen(categoryId: String, onBackClick: () -> Unit) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         pair.forEach { product ->
                             Box(
                                 modifier = Modifier
-                                    .weight(1f)
+                                    .weight(0.9f)
                                     .width(150.dp)
                                     .clickable {
                                         val intent = Intent(context, DetailsItemsActivity::class.java).apply {
