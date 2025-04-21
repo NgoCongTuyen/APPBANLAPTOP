@@ -141,7 +141,8 @@ fun DetailsItemsScreen(
                 backgroundColor = Color(0xFF6200EE),
                 contentColor = Color.White
             )
-        }
+        },
+        
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier

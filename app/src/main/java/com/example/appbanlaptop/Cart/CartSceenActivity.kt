@@ -1,5 +1,6 @@
 package com.example.appbanlaptop.cart
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -35,6 +36,7 @@ import com.example.appbanlaptop.R
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.appbanlaptop.Activity.BottomActivity
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -137,6 +139,17 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.White
                 )
+            )
+        },
+        bottomBar = {
+            BottomActivity.BottomMenu(
+                onItemClick = {
+                    // Kiểm tra xem context hiện tại có phải là CartScreenActivity không
+                    if (context !is CartScreenActivity) {
+                        val intent = Intent(context, CartScreenActivity::class.java)
+                        context.startActivity(intent)
+                    }
+                }
             )
         },
         content = { paddingValues ->
