@@ -6,7 +6,6 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.view.WindowManager
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -61,7 +60,6 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
-import com.example.appbanlaptop.Activity.BottomActivity
 import com.example.appbanlaptop.Activity.DetailsItemsActivity
 import com.example.appbanlaptop.Activity.ListItemActivity
 import com.example.appbanlaptop.Activity.ProfileActivity
@@ -125,14 +123,13 @@ fun MainActivityScreen(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         bottomBar = {
-            BottomActivity.BottomMenu(
+            BottomMenu(
                 onItemClick = {
                     val intent = Intent(context, CartScreenActivity::class.java)
                     context.startActivity(intent)
                 }
             )
         }
-
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
@@ -235,7 +232,6 @@ fun MainActivityScreen(
         }
     }
 }
-
 @Composable
 fun CategoryList(categories: List<CategoryItem>, context: Context) {
     var selectedIndex by remember { mutableStateOf(-1) }
@@ -581,5 +577,83 @@ fun DotIndicator(
                 Spacer(modifier = Modifier.width(6.dp))
             }
         }
+    }
+}
+
+
+@Composable
+fun BottomMenu(
+    modifier: Modifier = Modifier,
+    onItemClick: () -> Unit
+) {
+    val context = LocalContext.current
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+            .background(
+                color = colorResource(R.color.purple),
+                shape = RoundedCornerShape(10.dp)
+            ),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        BottomMenuItem(
+            icon = painterResource(R.drawable.btn_1),
+            text = "Explore"
+        )
+        BottomMenuItem(
+            icon = painterResource(R.drawable.btn_2),
+            text = "Cart",
+            onItemClick = onItemClick
+        )
+        BottomMenuItem(
+            icon = painterResource(R.drawable.btn_3),
+            text = "Favorite"
+        )
+        BottomMenuItem(
+            icon = painterResource(R.drawable.btn_4),
+            text = "Order"
+        )
+        BottomMenuItem(
+            icon = painterResource(id = R.drawable.btn_5),
+            text = "Profile",
+            onItemClick = {
+                // Điều hướng đến ProfileActivity
+                context.startActivity(Intent(context, ProfileActivity::class.java))
+            }
+        )
+    }
+}
+
+@Composable
+fun BottomMenuItem(
+    icon: Painter,
+    text: String,
+    onItemClick: (() -> Unit)? = null
+) {
+    Column(
+        modifier = Modifier
+            .height(60.dp)
+            .clickable(
+                enabled = onItemClick != null,
+                onClick = { onItemClick?.invoke() }
+            )
+            .padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            painter = icon,
+            contentDescription = text,
+            tint = Color.White,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = text,
+            color = Color.White,
+            fontSize = 10.sp,
+            textAlign = TextAlign.Center
+        )
     }
 }
