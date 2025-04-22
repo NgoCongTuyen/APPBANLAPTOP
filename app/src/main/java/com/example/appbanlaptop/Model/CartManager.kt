@@ -36,6 +36,9 @@ object CartManager {
             newRef.setValue(newItem)
                 .addOnSuccessListener {
                     Log.d("CartManager", "Successfully added item: $newItem with key: ${newRef.key}")
+                    // Cập nhật danh sách cục bộ ngay lập tức
+                    cartItems.add(newItem)
+                    _cartItemsFlow.value = cartItems.toList()
                 }
                 .addOnFailureListener {
                     Log.e("CartManager", "Failed to add cart item: ${it.message}")
@@ -50,11 +53,18 @@ object CartManager {
             cartRef?.child(key)?.setValue(item)
                 ?.addOnSuccessListener {
                     Log.d("CartManager", "Successfully updated item: $item")
+                    // Cập nhật danh sách cục bộ ngay lập tức
+                    val index = cartItems.indexOfFirst { it.firebaseKey == key }
+                    if (index != -1) {
+                        cartItems[index] = item
+                        _cartItemsFlow.value = cartItems.toList()
+                        Log.d("CartManager", "Updated cartItemsFlow after update: ${_cartItemsFlow.value}")
+                    }
                 }
                 ?.addOnFailureListener {
                     Log.e("CartManager", "Failed to update cart item: ${it.message}")
                 }
-        }
+        } ?: Log.e("CartManager", "Cannot update item: firebaseKey is null")
     }
 
     fun removeCartItem(firebaseKey: String?) {
@@ -62,6 +72,9 @@ object CartManager {
             cartRef?.child(key)?.removeValue()
                 ?.addOnSuccessListener {
                     Log.d("CartManager", "Successfully removed item with key: $key")
+                    // Cập nhật danh sách cục bộ ngay lập tức
+                    cartItems.removeAll { it.firebaseKey == key }
+                    _cartItemsFlow.value = cartItems.toList()
                 }
                 ?.addOnFailureListener {
                     Log.e("CartManager", "Failed to remove cart item: ${it.message}")
@@ -102,11 +115,12 @@ object CartManager {
                     }
                 }
                 _cartItemsFlow.value = cartItems.toList()
-                Log.d("CartManager", "Updated cartItems: $cartItems")
+                Log.d("CartManager", "Updated cartItemsFlow: ${_cartItemsFlow.value}")
             }
 
             override fun onCancelled(error: DatabaseError) {
                 Log.e("CartManager", "Database error: ${error.message}")
+                _cartItemsFlow.value = emptyList()
             }
         }
         valueEventListener?.let {

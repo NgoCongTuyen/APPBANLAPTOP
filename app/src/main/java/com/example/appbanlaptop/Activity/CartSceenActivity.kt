@@ -146,9 +146,7 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
         },
         bottomBar = {
             BottomActivity.BottomMenu(
-                onItemClick = {
-
-                }
+                onItemClick = {}
             )
         },
         content = { paddingValues ->
@@ -229,7 +227,7 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
                         Spacer(modifier = Modifier.height(8.dp))
                     }
 
-                    // Trong LazyColumn của CartScreen
+                    // Nút Check Out
                     item {
                         Button(
                             onClick = {
@@ -241,7 +239,12 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
                                         putParcelableArrayListExtra("CHECKOUT_ITEMS", ArrayList(itemsToCheckout))
                                         putExtra("TOTAL_PRICE", selectedItemsTotal) // selectedItemsTotal là Double
                                     }
-                                    context.startActivity(intent)
+                                    try {
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {
+                                        Log.e("CartScreen", "Failed to start PaymentActivity: ${e.message}")
+                                        Toast.makeText(context, "Lỗi khi mở thanh toán: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    }
                                 } else {
                                     Log.d("CartScreen", "No items selected for checkout")
                                     Toast.makeText(context, "Vui lòng chọn ít nhất một sản phẩm để thanh toán", Toast.LENGTH_SHORT).show()
@@ -250,8 +253,8 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(16.dp)
-                                .height(48.dp) // Đảm bảo nút đủ lớn
-                                .zIndex(1f), // Đảm bảo nút không bị che
+                                .height(48.dp)
+                                .zIndex(1f),
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4A6FF0)),
                             enabled = cartItems.any { it.isSelected }.also {
                                 Log.d("CartScreen", "Check Out button enabled: $it, selected items: ${cartItems.filter { it.isSelected }}")
@@ -271,6 +274,7 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
     )
 }
 
+
 @Composable
 fun CartItemCard(
     cartItem: CartItem,
@@ -281,6 +285,9 @@ fun CartItemCard(
     val context = LocalContext.current
     val locale = Locale("vi", "VN")
     val numberFormat = NumberFormat.getCurrencyInstance(locale)
+
+    // Trạng thái cục bộ để hiển thị ngay lập tức
+    var isSelected by remember(cartItem.firebaseKey) { mutableStateOf(cartItem.isSelected) }
 
     Card(
         modifier = Modifier
@@ -296,15 +303,16 @@ fun CartItemCard(
         ) {
             // Selection checkbox
             Checkbox(
-                checked = cartItem.isSelected,
+                checked = isSelected,
                 onCheckedChange = { isChecked ->
                     Log.d("CartItemCard", "Checkbox clicked for ${cartItem.title}, new state: $isChecked, firebaseKey: ${cartItem.firebaseKey}")
+                    isSelected = isChecked // Cập nhật trạng thái cục bộ ngay lập tức
                     onSelectChange(isChecked)
                 },
                 modifier = Modifier
                     .padding(end = 8.dp)
-                    .size(28.dp) // Tăng kích thước để dễ nhấn
-                    .background(Color.Transparent, RoundedCornerShape(4.dp)) // Đảm bảo không bị che
+                    .size(28.dp)
+                    .background(Color.Transparent, RoundedCornerShape(4.dp))
             )
 
             // Hiển thị hình ảnh sản phẩm
@@ -371,11 +379,9 @@ fun CartItemCard(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Đặt giá tiền và quantity controls trong một Column
                 Column(
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    // Giá tiền (chỉ hiển thị tổng giá)
                     val totalPrice = cartItem.price * cartItem.quantity
                     val formattedPrice = numberFormat.format(totalPrice)
                     Text(
@@ -388,7 +394,6 @@ fun CartItemCard(
 
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    // Quantity controls
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -401,7 +406,7 @@ fun CartItemCard(
                                 if (cartItem.quantity > 1) {
                                     onQuantityChange(cartItem.quantity - 1)
                                 } else {
-                                    onQuantityChange(0) // Xóa ngay khi số lượng về 0
+                                    onQuantityChange(0)
                                 }
                             },
                             modifier = Modifier
@@ -447,7 +452,6 @@ fun CartItemCard(
                 }
             }
 
-            // Delete button
             IconButton(onClick = onDelete) {
                 Icon(
                     imageVector = Icons.Default.Delete,

@@ -27,10 +27,19 @@ import com.example.appbanlaptop.ui.theme.PaymentTheme
 import java.text.DecimalFormat
 import android.util.Log
 import android.os.Parcelable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.room.util.copy
-import com.example.appbanlaptop.paymment.Product
+import coil.compose.AsyncImage
+import coil.request.CachePolicy
+import coil.request.ImageRequest
+import com.example.appbanlaptop.Model.CartItem
+import com.example.appbanlaptop.R
 import kotlinx.parcelize.Parcelize
 
 // Định nghĩa nguồn dữ liệu chung
@@ -46,12 +55,18 @@ object AddressState {
 class PaymentActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Nhận dữ liệu từ Intent
+        val checkoutItems = intent.getParcelableArrayListExtra<CartItem>("CHECKOUT_ITEMS") ?: emptyList()
+        val totalPrice = intent.getDoubleExtra("TOTAL_PRICE", 0.0)
+        Log.d("PaymentActivity", "Received items: size=${checkoutItems.size}, items=$checkoutItems, totalPrice=$totalPrice")
+
         setContent {
             PaymentTheme {
                 val navController = rememberNavController()
                 NavHost(navController = navController, startDestination = "payment") {
                     composable("payment") {
-                        PaymentScreen(navController)
+                        PaymentScreen(navController, checkoutItems, totalPrice)
                     }
                     composable("address_list") {
                         AddressListScreen(navController)
@@ -70,8 +85,9 @@ class PaymentActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PaymentScreen(navController: NavController) {
+fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, totalPriceFromIntent: Double) {
     var selectedAddress by remember {
         mutableStateOf(AddressState.addresses.firstOrNull { it.isDefault } ?: AddressState.addresses.firstOrNull())
     }
@@ -102,64 +118,125 @@ fun PaymentScreen(navController: NavController) {
         Log.d("PaymentScreen", "Addresses updated: ${AddressState.addresses}")
     }
 
-    val products = remember {
-        mutableStateListOf(
-            Product("Bàn phím cơ Gaming ZIYOU K550 V...", "Trắng Đen", "348874", 1),
-            Product("Chuột Silent Gaming Atlas F20 Không d...", "F20 Đen", "207326", 1)
-        )
+    // Chuyển đổi CartItem sang Product
+    val products = remember(checkoutItems) {
+        mutableStateListOf<Product>().apply {
+            try {
+                addAll(checkoutItems.map { Product.fromCartItem(it) })
+            } catch (e: Exception) {
+                Log.e("PaymentScreen", "Error mapping CartItem to Product: ${e.message}", e)
+            }
+        }
+    }
+
+    // Thêm log để debug danh sách products
+    LaunchedEffect(products) {
+        Log.d("PaymentScreen", "Products list: size=${products.size}, items=$products")
     }
 
     val totalPrice by remember(products) {
         derivedStateOf {
-            products.sumOf { product -> product.price.toInt() * product.quantity }
+            products.sumOf { product ->
+                try {
+                    product.price.toInt() * product.quantity
+                } catch (e: NumberFormatException) {
+                    Log.e("PaymentScreen", "Error parsing price for product: ${product.name}, price=${product.price}", e)
+                    0
+                }
+            }.toDouble()
         }
     }
 
+    val finalTotalPrice = if (totalPriceFromIntent > 0) totalPriceFromIntent else totalPrice
+
     Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Payment",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = {
+                        (navController.context as? ComponentActivity)?.finish()
+                    }) {
+                        Icon(
+                            painter = painterResource(R.drawable.back),
+                            contentDescription = "Back",
+                            tint = Color.Blue,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Black
+                )
+            )
+        },
         bottomBar = {
-            TotalAndCheckoutButton(productsSize = products.size, totalPrice = totalPrice)
+            TotalAndCheckoutButton(productsSize = products.size, totalPrice = finalTotalPrice.toInt())
         }
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black)
-                .padding( bottom = paddingValues.calculateBottomPadding()),
-            //contentPadding = PaddingValues(horizontal = 16.dp)
-        ) {
-            item {
-                ShippingInfo(
-                    selectedAddress = selectedAddress,
-                    onAddressClick = {
-                        navController.navigate("address_list")
-                    }
+        if (products.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+                    .padding(paddingValues), // Áp dụng đầy đủ paddingValues
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Không có sản phẩm để thanh toán",
+                    color = Color.Black, // Đổi màu chữ thành đen để dễ đọc trên nền trắng
+                    fontSize = 16.sp,
+                    textAlign = TextAlign.Center
                 )
             }
-            item {
-                Row(modifier = Modifier.fillMaxWidth().height(2.dp)) {
-                    Box(modifier = Modifier.weight(1f).background(Color(0xFFFF0000)))
-                    Box(modifier = Modifier.weight(1f).background(Color(0xFF00C4FF)))
-                }
-            }
-            item { StoreHeader() }
-            items(products) { product ->
-                ProductItem(
-                    product = product,
-                    onQuantityChange = { newQuantity ->
-                        val index = products.indexOf(product)
-                        if (newQuantity >= 1) {
-                            products[index] = product.copy(quantity = newQuantity)
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.White) // Đổi background thành trắng
+                    .padding(paddingValues), // Áp dụng đầy đủ paddingValues
+            ) {
+                item {
+                    ShippingInfo(
+                        selectedAddress = selectedAddress,
+                        onAddressClick = {
+                            navController.navigate("address_list")
                         }
-                    }
-                )
-            }
-            item {
-                Row(modifier = Modifier.fillMaxWidth().height(10.dp)) {
-                    Box(modifier = Modifier.weight(1f).background(Color(0xFFFF0000)))
-                    Box(modifier = Modifier.weight(1f).background(Color(0xFF00C4FF)))
+                    )
                 }
+                item {
+                    Row(modifier = Modifier.fillMaxWidth().height(2.dp)) {
+                        Box(modifier = Modifier.weight(1f).background(Color(0xFFFF0000)))
+                        Box(modifier = Modifier.weight(1f).background(Color(0xFF00C4FF)))
+                    }
+                }
+                item { StoreHeader() }
+                items(products) { product ->
+                    ProductItem(
+                        product = product,
+                        onQuantityChange = { newQuantity ->
+                            val index = products.indexOf(product)
+                            if (newQuantity >= 1) {
+                                products[index] = product.copy(quantity = newQuantity)
+                            }
+                        }
+                    )
+                }
+                item {
+                    Row(modifier = Modifier.fillMaxWidth().height(10.dp)) {
+                        Box(modifier = Modifier.weight(1f).background(Color(0xFFFF0000)))
+                        Box(modifier = Modifier.weight(1f).background(Color(0xFF00C4FF)))
+                    }
+                }
+                item { PaymentMethod() }
             }
-            item { PaymentMethod() }
         }
     }
 }
@@ -509,8 +586,68 @@ fun ProductItem(product: Product, onQuantityChange: (Int) -> Unit) {
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(modifier = Modifier.size(80.dp).background(Color.Gray))
+        // Hiển thị hình ảnh sản phẩm
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .clip(RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            if (product.imageUrl != null && product.imageUrl.isNotEmpty()) {
+                var isImageLoading by remember(product.imageUrl) { mutableStateOf(true) }
+                var isImageError by remember(product.imageUrl) { mutableStateOf(false) }
+
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(product.imageUrl)
+                        .memoryCachePolicy(CachePolicy.ENABLED)
+                        .diskCachePolicy(CachePolicy.ENABLED)
+                        .build(),
+                    contentDescription = product.name,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop,
+                    placeholder = painterResource(R.drawable.loadding),
+                    error = painterResource(R.drawable.error),
+                    onLoading = { isImageLoading = true },
+                    onSuccess = { isImageLoading = false; isImageError = false },
+                    onError = { isImageLoading = false; isImageError = true }
+                )
+
+                if (isImageLoading) {
+                    Text(
+                        text = "Đang tải...",
+                        fontSize = 12.sp,
+                        color = Color.Gray,
+                        modifier = Modifier
+                            .background(Color.White.copy(alpha = 0.7f))
+                            .padding(2.dp)
+                    )
+                } else if (isImageError) {
+                    Text(
+                        text = "Lỗi",
+                        fontSize = 12.sp,
+                        color = Color.Red,
+                        modifier = Modifier
+                            .background(Color.White.copy(alpha = 0.7f))
+                            .padding(2.dp)
+                    )
+                }
+            } else {
+                Image(
+                    painter = painterResource(id = R.drawable.cat1),
+                    contentDescription = "Default Product Image",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            }
+        }
+
         Spacer(modifier = Modifier.width(12.dp))
+
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = product.name,
@@ -536,10 +673,23 @@ fun ProductItem(product: Product, onQuantityChange: (Int) -> Unit) {
                 overflow = TextOverflow.Ellipsis
             )
         }
+
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 8.dp)) {
-            Text(text = "-", color = Color.White, modifier = Modifier.padding(4.dp).clickable { onQuantityChange(product.quantity - 1) })
-            Text(text = product.quantity.toString(), color = Color.White, modifier = Modifier.padding(horizontal = 8.dp))
-            Text(text = "+", color = Color.White, modifier = Modifier.padding(4.dp).clickable { onQuantityChange(product.quantity + 1) })
+            Text(
+                text = "-",
+                color = Color.White,
+                modifier = Modifier.padding(4.dp).clickable { onQuantityChange(product.quantity - 1) }
+            )
+            Text(
+                text = product.quantity.toString(),
+                color = Color.White,
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
+            Text(
+                text = "+",
+                color = Color.White,
+                modifier = Modifier.padding(4.dp).clickable { onQuantityChange(product.quantity + 1) }
+            )
         }
     }
 }

@@ -30,6 +30,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
@@ -79,6 +81,7 @@ import com.google.accompanist.pager.rememberPagerState
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import searchProducts
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
@@ -120,10 +123,26 @@ fun MainActivityScreen(
     categories: List<CategoryItem>,
     username: String,
     onCartClick: @Composable () -> Unit,
-    isLoadingItems: Boolean // Thêm tham số
+    isLoadingItems: Boolean
 ) {
     val context = LocalContext.current
     val recommendedProducts = productItems.filter { it.showRecommended == true }
+    var showSearchBar by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    var searchResults by remember { mutableStateOf<List<ProductItem>>(emptyList()) }
+    var isSearching by remember { mutableStateOf(false) }
+
+    // Hàm tìm kiếm sản phẩm
+    fun performSearch(query: String) {
+        isSearching = true
+        val results = productItems.filter { product ->
+            val queryLower = query.lowercase()
+            product.title?.lowercase()?.contains(queryLower) == true ||
+                    product.description?.lowercase()?.contains(queryLower) == true
+        }
+        searchResults = results
+        isSearching = false
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -161,18 +180,110 @@ fun MainActivityScreen(
                         )
                     }
                     Row {
-                        Image(painter = painterResource(R.drawable.fav_icon), contentDescription = "Favorite", modifier = Modifier.size(24.dp))
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Image(painter = painterResource(R.drawable.search_icon), contentDescription = "Search", modifier = Modifier.size(24.dp))
+                        Image(
+                            painter = painterResource(R.drawable.search_icon),
+                            contentDescription = "Search",
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clickable { showSearchBar = !showSearchBar }
+                        )
+                    }
+                }
+            }
+
+            if (showSearchBar) {
+                item {
+                    androidx.compose.material3.TextField(
+                        value = searchQuery,
+                        onValueChange = { query ->
+                            searchQuery = query
+                            if (query.isNotEmpty()) {
+                                performSearch(query)
+                            } else {
+                                searchResults = emptyList()
+                                isSearching = false
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        placeholder = { Text("Tìm kiếm sản phẩm...") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Search Icon",
+                                tint = Color.Gray
+                            )
+                        },
+                        singleLine = true
+                    )
+                }
+            }
+
+            if (isSearching) {
+                item {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .wrapContentSize(Alignment.Center)
+                    )
+                    Text(
+                        text = "Đang tìm kiếm...",
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(8.dp)
+                    )
+                }
+            } else if (showSearchBar && searchQuery.isNotEmpty() && searchResults.isEmpty()) {
+                item {
+                    Text(
+                        text = "Không tìm thấy sản phẩm nào",
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(16.dp)
+                    )
+                }
+            } else if (showSearchBar && searchResults.isNotEmpty()) {
+                items(searchResults.chunked(2)) { pair ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        pair.forEach { product ->
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .width(150.dp)
+                                    .clickable {
+                                        val intent = Intent(context, DetailsItemsActivity::class.java).apply {
+                                            putExtra("PRODUCT_TITLE", product.title)
+                                            putExtra("PRODUCT_DESCRIPTION", product.description)
+                                            putExtra("PRODUCT_PRICE", product.price ?: "0 đ")
+                                            putExtra("PRODUCT_RATING", product.rating ?: 0.0)
+                                            putExtra("PRODUCT_PIC_URL", product.picUrl?.firstOrNull())
+                                            putExtra("PRODUCT_MODELS", product.model?.toTypedArray())
+                                            putExtra("PRODUCT_CATEGORY_ID", product.categoryId)
+                                        }
+                                        context.startActivity(intent)
+                                    }
+                            ) {
+                                ProductItem(product = product)
+                            }
+                        }
+                        if (pair.size < 2) {
+                            Spacer(modifier = Modifier.weight(0.6f))
+                        }
                     }
                 }
             }
 
             item { AutoSlidingCarousel() }
-
             item { SectionTitle("Categories", "See All") }
             item { CategoryList(categories, context) }
-
             item { SectionTitle("Recommended Products", "See All") }
             if (isLoadingItems) {
                 item {
@@ -237,6 +348,7 @@ fun MainActivityScreen(
         }
     }
 }
+
 @Composable
 fun CategoryList(categories: List<CategoryItem>, context: Context) {
     var selectedIndex by remember { mutableStateOf(-1) }

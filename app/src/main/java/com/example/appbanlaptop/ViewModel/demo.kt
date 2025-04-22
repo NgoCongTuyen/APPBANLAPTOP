@@ -75,3 +75,133 @@
 //
 //
 //}
+
+//class PaymentActivity : ComponentActivity() {
+//    override fun onCreate(savedInstanceState: Bundle?) {
+//        super.onCreate(savedInstanceState)
+//        setContent {
+//            PaymentTheme {
+//                val navController = rememberNavController()
+//                NavHost(navController = navController, startDestination = "payment") {
+//                    composable("payment") {
+//                        PaymentScreen(navController)
+//                    }
+//                    composable("address_list") {
+//                        AddressListScreen(navController)
+//                    }
+//                    composable("add_address") {
+//                        AddAddressScreen(navController, null) // Thêm mới
+//                    }
+//                    composable("edit_address/{index}") { backStackEntry ->
+//                        val index = backStackEntry.arguments?.getString("index")?.toIntOrNull()
+//                        val addressToEdit = index?.let { AddressState.addresses.getOrNull(it) }
+//                        AddAddressScreen(navController, addressToEdit) // Chỉnh sửa
+//                    }
+//                }
+//            }
+//        }
+//    }
+//}
+//
+
+
+
+
+
+
+
+
+
+//@Composable
+//fun PaymentScreen(navController: NavController) {
+//    var selectedAddress by remember {
+//        mutableStateOf(AddressState.addresses.firstOrNull { it.isDefault } ?: AddressState.addresses.firstOrNull())
+//    }
+//
+//    val backStackEntry = navController.currentBackStackEntry
+//    val selectedFromList = backStackEntry?.savedStateHandle?.get<Address>("selected_address")
+//
+//    LaunchedEffect(selectedFromList) {
+//        selectedFromList?.let { address ->
+//            Log.d("PaymentScreen", "Selected address from AddressListScreen: $address")
+//            selectedAddress = address
+//            backStackEntry.savedStateHandle.remove<Address>("selected_address")
+//        }
+//    }
+//
+//    Log.d("PaymentScreen", "PaymentScreen recomposed")
+//
+//    AddressState.newAddress.value?.let { newAddress ->
+//        Log.d("PaymentScreen", "New address detected: $newAddress")
+//        if (newAddress.isDefault) {
+//            AddressState.addresses.forEachIndexed { index, address ->
+//                AddressState.addresses[index] = address.copy(isDefault = false)
+//            }
+//        }
+//        AddressState.addresses.add(newAddress)
+//        selectedAddress = newAddress
+//        AddressState.newAddress.value = null
+//        Log.d("PaymentScreen", "Addresses updated: ${AddressState.addresses}")
+//    }
+//
+//    val products = remember {
+//        mutableStateListOf(
+//            Product("Bàn phím cơ Gaming ZIYOU K550 V...", "Trắng Đen", "348874", 1),
+//            Product("Chuột Silent Gaming Atlas F20 Không d...", "F20 Đen", "207326", 1)
+//        )
+//    }
+//
+//    val totalPrice by remember(products) {
+//        derivedStateOf {
+//            products.sumOf { product -> product.price.toInt() * product.quantity }
+//        }
+//    }
+//
+//    Scaffold(
+//        bottomBar = {
+//            TotalAndCheckoutButton(productsSize = products.size, totalPrice = totalPrice)
+//        }
+//    ) { paddingValues ->
+//        LazyColumn(
+//            modifier = Modifier
+//                .fillMaxSize()
+//                .background(Color.Black)
+//                .padding( bottom = paddingValues.calculateBottomPadding()),
+//            //contentPadding = PaddingValues(horizontal = 16.dp)
+//        ) {
+//            item {
+//                ShippingInfo(
+//                    selectedAddress = selectedAddress,
+//                    onAddressClick = {
+//                        navController.navigate("address_list")
+//                    }
+//                )
+//            }
+//            item {
+//                Row(modifier = Modifier.fillMaxWidth().height(2.dp)) {
+//                    Box(modifier = Modifier.weight(1f).background(Color(0xFFFF0000)))
+//                    Box(modifier = Modifier.weight(1f).background(Color(0xFF00C4FF)))
+//                }
+//            }
+//            item { StoreHeader() }
+//            items(products) { product ->
+//                ProductItem(
+//                    product = product,
+//                    onQuantityChange = { newQuantity ->
+//                        val index = products.indexOf(product)
+//                        if (newQuantity >= 1) {
+//                            products[index] = product.copy(quantity = newQuantity)
+//                        }
+//                    }
+//                )
+//            }
+//            item {
+//                Row(modifier = Modifier.fillMaxWidth().height(10.dp)) {
+//                    Box(modifier = Modifier.weight(1f).background(Color(0xFFFF0000)))
+//                    Box(modifier = Modifier.weight(1f).background(Color(0xFF00C4FF)))
+//                }
+//            }
+//            item { PaymentMethod() }
+//        }
+//    }
+//}
