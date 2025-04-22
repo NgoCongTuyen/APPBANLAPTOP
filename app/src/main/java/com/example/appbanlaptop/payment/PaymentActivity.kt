@@ -103,8 +103,6 @@ fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, t
         }
     }
 
-    Log.d("PaymentScreen", "PaymentScreen recomposed")
-
     AddressState.newAddress.value?.let { newAddress ->
         Log.d("PaymentScreen", "New address detected: $newAddress")
         if (newAddress.isDefault) {
@@ -115,7 +113,6 @@ fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, t
         AddressState.addresses.add(newAddress)
         selectedAddress = newAddress
         AddressState.newAddress.value = null
-        Log.d("PaymentScreen", "Addresses updated: ${AddressState.addresses}")
     }
 
     // Chuyển đổi CartItem sang Product
@@ -129,11 +126,7 @@ fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, t
         }
     }
 
-    // Thêm log để debug danh sách products
-    LaunchedEffect(products) {
-        Log.d("PaymentScreen", "Products list: size=${products.size}, items=$products")
-    }
-
+    // Tính tổng giá
     val totalPrice by remember(products) {
         derivedStateOf {
             products.sumOf { product ->
@@ -146,8 +139,6 @@ fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, t
             }.toDouble()
         }
     }
-
-    val finalTotalPrice = if (totalPriceFromIntent > 0) totalPriceFromIntent else totalPrice
 
     Scaffold(
         topBar = {
@@ -178,7 +169,7 @@ fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, t
             )
         },
         bottomBar = {
-            TotalAndCheckoutButton(productsSize = products.size, totalPrice = finalTotalPrice.toInt())
+            TotalAndCheckoutButton(productsSize = products.size, totalPrice = totalPrice.toInt())
         }
     ) { paddingValues ->
         if (products.isEmpty()) {
@@ -186,12 +177,12 @@ fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, t
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black)
-                    .padding(paddingValues), // Áp dụng đầy đủ paddingValues
+                    .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "Không có sản phẩm để thanh toán",
-                    color = Color.Black, // Đổi màu chữ thành đen để dễ đọc trên nền trắng
+                    color = Color.Black,
                     fontSize = 16.sp,
                     textAlign = TextAlign.Center
                 )
@@ -200,8 +191,8 @@ fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, t
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.White) // Đổi background thành trắng
-                    .padding(paddingValues), // Áp dụng đầy đủ paddingValues
+                    .background(Color.White)
+                    .padding(paddingValues),
             ) {
                 item {
                     ShippingInfo(
