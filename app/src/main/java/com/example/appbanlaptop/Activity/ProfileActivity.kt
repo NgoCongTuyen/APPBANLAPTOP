@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.appbanlaptop.R
-import com.example.appbanlaptop.cart.CartScreenActivity
+//import com.example.appbanlaptop.cart.CartScreenActivity
 import com.example.appbanlaptop.ui.theme.APPBANLAPTOPTheme
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
@@ -74,26 +74,30 @@ fun ProfileScreen(onLogoutClicked: () -> Unit, onBackClick: () -> Unit = {}) {
     val email = currentUser?.email ?: "No email"
     val photoUrl = currentUser?.photoUrl?.toString()
 
-    // Lấy username và createdAt từ Firebase Realtime Database
-    val username = remember { mutableStateOf("User") }
+    // Khởi tạo username với displayName hoặc "User"
+    val username = remember { mutableStateOf(currentUser?.displayName ?: "User") }
     val createdAt = remember { mutableStateOf<Long?>(null) }
+
     LaunchedEffect(Unit) {
         val userId = currentUser?.uid
         if (userId != null) {
             val userRef = FirebaseDatabase.getInstance().getReference("users").child(userId)
             userRef.addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    // Lấy username
+                    println("Snapshot: ${snapshot.value}")
                     val dbUsername = snapshot.child("username").getValue(String::class.java)
+                    println("Username from DB: $dbUsername")
                     if (!dbUsername.isNullOrEmpty()) {
                         username.value = dbUsername
                     }
-                    // Lấy createdAt
-                    createdAt.value = snapshot.child("createdAt").getValue(Long::class.java)
                 }
 
-                override fun onCancelled(error: DatabaseError) {}
+                override fun onCancelled(error: DatabaseError) {
+                    println("Firebase Error: ${error.message}")
+                }
             })
+        } else {
+            println("No user logged in")
         }
     }
 
@@ -114,9 +118,7 @@ fun ProfileScreen(onLogoutClicked: () -> Unit, onBackClick: () -> Unit = {}) {
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        onBackClick()
-                    }) {
+                    IconButton(onClick = { onBackClick() }) {
                         Icon(
                             painter = painterResource(R.drawable.back),
                             contentDescription = "Back",
@@ -125,17 +127,11 @@ fun ProfileScreen(onLogoutClicked: () -> Unit, onBackClick: () -> Unit = {}) {
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
             )
         },
         bottomBar = {
-            BottomActivity.BottomMenu(
-                onItemClick = {
-                    // Kiểm tra xem context hiện tại có phải là CartScreenActivity không
-                }
-            )
+            BottomActivity.BottomMenu(onItemClick = {})
         }
     ) { paddingValues ->
         LazyColumn(
@@ -147,7 +143,6 @@ fun ProfileScreen(onLogoutClicked: () -> Unit, onBackClick: () -> Unit = {}) {
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Card 1: Thông tin người dùng
             item {
                 Card(
                     modifier = Modifier
@@ -183,8 +178,6 @@ fun ProfileScreen(onLogoutClicked: () -> Unit, onBackClick: () -> Unit = {}) {
                             )
                         }
                         Spacer(modifier = Modifier.height(16.dp))
-
-                        // Tên người dùng (lấy từ Realtime Database)
                         Text(
                             text = username.value,
                             fontSize = 22.sp,
@@ -193,7 +186,6 @@ fun ProfileScreen(onLogoutClicked: () -> Unit, onBackClick: () -> Unit = {}) {
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-
                         Text(
                             text = email,
                             fontSize = 16.sp,

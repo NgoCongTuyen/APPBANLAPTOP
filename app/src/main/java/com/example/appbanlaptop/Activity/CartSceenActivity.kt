@@ -47,7 +47,6 @@ class CartScreenActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Kiểm tra xem người dùng đã đăng nhập chưa
         val currentUser = FirebaseAuth.getInstance().currentUser
         if (currentUser == null) {
             Toast.makeText(this, "Vui lòng đăng nhập để xem giỏ hàng", Toast.LENGTH_LONG).show()
@@ -55,7 +54,6 @@ class CartScreenActivity : ComponentActivity() {
             return
         }
 
-        // Thiết lập userId cho CartManager
         CartManager.setUserId(currentUser.uid)
 
         setContent {
@@ -68,14 +66,18 @@ class CartScreenActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        CartManager.cleanup() // Dọn dẹp listener khi Activity bị hủy
+        CartManager.cleanup()
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
+
     var cartItems by remember { mutableStateOf(CartManager.getCartItems()) }
+
+    val cartItems by CartManager.cartItemsFlow.collectAsState()
+
     val context = LocalContext.current
     val locale = Locale("vi", "VN")
     val numberFormat = NumberFormat.getCurrencyInstance(locale)
@@ -224,9 +226,8 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
                         Button(
                             onClick = {
                                 val itemsToCheckout = cartItems.filter { it.isSelected }
-                                Log.d("CartScreen", "Check Out clicked, selected items: ${itemsToCheckout.size}, items: $itemsToCheckout")
+                                Log.d("CartScreen", "Check Out clicked, selected items: ${itemsToCheckout.size}")
                                 if (itemsToCheckout.isNotEmpty()) {
-                                    Log.d("CartScreen", "Navigating to PaymentActivity with total: $selectedItemsTotal")
                                     val intent = Intent(context, PaymentActivity::class.java).apply {
                                         putParcelableArrayListExtra("CHECKOUT_ITEMS", ArrayList(itemsToCheckout))
                                         putExtra("TOTAL_PRICE", selectedItemsTotal)
@@ -237,20 +238,17 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
                                         Log.e("CartScreen", "Failed to start PaymentActivity: ${e.message}")
                                         Toast.makeText(context, "Lỗi khi mở thanh toán: ${e.message}", Toast.LENGTH_SHORT).show()
                                     }
+                                    context.startActivity(intent)
                                 } else {
-                                    Log.d("CartScreen", "No items selected for checkout")
                                     Toast.makeText(context, "Vui lòng chọn ít nhất một sản phẩm để thanh toán", Toast.LENGTH_SHORT).show()
                                 }
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(16.dp)
-                                .height(48.dp)
-                                .zIndex(1f),
+                                .height(48.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4A6FF0)),
-                            enabled = cartItems.any { it.isSelected }.also {
-                                Log.d("CartScreen", "Check Out button enabled: $it, selected items: ${cartItems.filter { it.isSelected }}")
-                            }
+                            enabled = cartItems.any { it.isSelected }
                         ) {
                             val formattedTotal = numberFormat.format(selectedItemsTotal)
                             Text(
