@@ -75,16 +75,13 @@ class CartScreenActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
-    // Đồng bộ cartItems với CartManager
     var cartItems by remember { mutableStateOf(CartManager.getCartItems()) }
     val context = LocalContext.current
     val locale = Locale("vi", "VN")
     val numberFormat = NumberFormat.getCurrencyInstance(locale)
 
-    // Lấy userId từ FirebaseAuth
     val userId = FirebaseAuth.getInstance().currentUser?.uid ?: "Unknown User"
 
-    // Lắng nghe thay đổi từ CartManager sử dụng Flow
     LaunchedEffect(Unit) {
         CartManager.cartItemsFlow.collectLatest { updatedItems ->
             Log.d("CartScreen", "Cart items updated: size=${updatedItems.size}, items=$updatedItems")
@@ -92,14 +89,12 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
         }
     }
 
-    // Tính tổng giá của các sản phẩm được chọn (dùng cho nút Check Out)
     val selectedItemsTotal by remember(cartItems) {
         derivedStateOf {
             cartItems.filter { it.isSelected }.sumOf { it.price * it.quantity }
         }
     }
 
-    // Tính tổng giá của tất cả sản phẩm
     val allItemsTotal by remember(cartItems) {
         derivedStateOf {
             cartItems.sumOf { it.price * it.quantity }
@@ -172,7 +167,6 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
                         .background(Color(0xFFF6F6F6))
                         .padding(paddingValues)
                 ) {
-                    // Hiển thị userId, tổng số sản phẩm và tổng giá của tất cả sản phẩm
                     item {
                         Column(
                             modifier = Modifier
@@ -199,7 +193,6 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
                         }
                     }
 
-                    // Danh sách sản phẩm
                     items(cartItems, key = { it.firebaseKey ?: it.id }) { cartItem ->
                         CartItemCard(
                             cartItem = cartItem,
@@ -227,7 +220,6 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
                         Spacer(modifier = Modifier.height(8.dp))
                     }
 
-                    // Nút Check Out
                     item {
                         Button(
                             onClick = {
@@ -237,7 +229,7 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
                                     Log.d("CartScreen", "Navigating to PaymentActivity with total: $selectedItemsTotal")
                                     val intent = Intent(context, PaymentActivity::class.java).apply {
                                         putParcelableArrayListExtra("CHECKOUT_ITEMS", ArrayList(itemsToCheckout))
-                                        putExtra("TOTAL_PRICE", selectedItemsTotal) // selectedItemsTotal là Double
+                                        putExtra("TOTAL_PRICE", selectedItemsTotal)
                                     }
                                     try {
                                         context.startActivity(intent)
@@ -274,7 +266,6 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
     )
 }
 
-
 @Composable
 fun CartItemCard(
     cartItem: CartItem,
@@ -285,9 +276,6 @@ fun CartItemCard(
     val context = LocalContext.current
     val locale = Locale("vi", "VN")
     val numberFormat = NumberFormat.getCurrencyInstance(locale)
-
-    // Trạng thái cục bộ để hiển thị ngay lập tức
-    var isSelected by remember(cartItem.firebaseKey) { mutableStateOf(cartItem.isSelected) }
 
     Card(
         modifier = Modifier
@@ -303,10 +291,9 @@ fun CartItemCard(
         ) {
             // Selection checkbox
             Checkbox(
-                checked = isSelected,
+                checked = cartItem.isSelected, // Lấy trực tiếp từ cartItem
                 onCheckedChange = { isChecked ->
                     Log.d("CartItemCard", "Checkbox clicked for ${cartItem.title}, new state: $isChecked, firebaseKey: ${cartItem.firebaseKey}")
-                    isSelected = isChecked // Cập nhật trạng thái cục bộ ngay lập tức
                     onSelectChange(isChecked)
                 },
                 modifier = Modifier
@@ -370,7 +357,7 @@ fun CartItemCard(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = cartItem.title,
+                    text = cartItem.title ?: "Unknown Item",
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
                     maxLines = 1,
@@ -382,7 +369,13 @@ fun CartItemCard(
                 Column(
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    val totalPrice = cartItem.price * cartItem.quantity
+                    // Sử dụng derivedStateOf để đảm bảo giá cập nhật khi quantity thay đổi
+                    val totalPrice by remember(cartItem.quantity, cartItem.price) {
+                        derivedStateOf {
+                            cartItem.price
+//                            cartItem.price * cartItem.quantity
+                        }
+                    }
                     val formattedPrice = numberFormat.format(totalPrice)
                     Text(
                         text = formattedPrice,

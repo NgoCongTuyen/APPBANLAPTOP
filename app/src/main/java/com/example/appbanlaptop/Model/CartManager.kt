@@ -53,12 +53,13 @@ object CartManager {
             cartRef?.child(key)?.setValue(item)
                 ?.addOnSuccessListener {
                     Log.d("CartManager", "Successfully updated item: $item")
-                    // Cập nhật danh sách cục bộ ngay lập tức
                     val index = cartItems.indexOfFirst { it.firebaseKey == key }
                     if (index != -1) {
                         cartItems[index] = item
                         _cartItemsFlow.value = cartItems.toList()
                         Log.d("CartManager", "Updated cartItemsFlow after update: ${_cartItemsFlow.value}")
+                    } else {
+                        Log.w("CartManager", "Item with key $key not found in local list")
                     }
                 }
                 ?.addOnFailureListener {
