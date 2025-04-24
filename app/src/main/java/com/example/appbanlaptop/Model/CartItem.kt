@@ -14,4 +14,6 @@ data class CartItem(
     val isSelected: Boolean = false,
     val firebaseKey: String? = null,
     val maxStock: Int = 100 // Thêm thuộc tính maxStock, mặc định là 100
-) : Parcelable
+) : Parcelable {
+
+}

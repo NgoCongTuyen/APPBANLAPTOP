@@ -81,6 +81,14 @@ class PaymentActivity : ComponentActivity() {
                         val addressToEdit = index?.let { AddressState.addresses.getOrNull(it) }
                         AddAddressScreen(navController, addressToEdit) // Chỉnh sửa
                     }
+                    composable("order_success") {
+                        OrderSuccessScreen(
+                            navController = navController,
+                            products = checkoutItems,
+                            totalPrice = totalPrice,
+                            address = AddressState.addresses.firstOrNull { it.isDefault }
+                        )
+                    }
                 }
             }
         }
@@ -171,7 +179,11 @@ fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, t
             )
         },
         bottomBar = {
-            TotalAndCheckoutButton(productsSize = products.size, totalPrice = totalPrice.toInt())
+            TotalAndCheckoutButton(
+                productsSize = products.size,
+                totalPrice = totalPrice.toInt(),
+                navController = navController
+            )
         }
     ) { paddingValues ->
         if (products.isEmpty()) {
@@ -723,11 +735,18 @@ fun PaymentOption(name: String, isSelected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-fun TotalAndCheckoutButton(productsSize: Int, totalPrice: Int) {
+fun TotalAndCheckoutButton(
+    productsSize: Int,
+    totalPrice: Int,
+    navController: NavController
+) {
     val formatter = DecimalFormat("#,###")
     val formattedTotal = "${formatter.format(totalPrice)}đ"
     Row(
-        modifier = Modifier.fillMaxWidth().background(Color(0xFF1C2526)).padding(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFF1C2526))
+            .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -736,11 +755,161 @@ fun TotalAndCheckoutButton(productsSize: Int, totalPrice: Int) {
             Text(text = formattedTotal, color = Color(0xFFFF0000), fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
         Button(
-            onClick = { /* Xử lý đặt hàng */ },
-            modifier = Modifier.height(48.dp).clip(RoundedCornerShape(8.dp)),
+            onClick = { 
+                navController.navigate("order_success")
+            },
+            modifier = Modifier
+                .height(48.dp)
+                .clip(RoundedCornerShape(8.dp)),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF0000))
         ) {
             Text(text = "Đặt hàng", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun OrderSuccessScreen(
+    navController: NavController,
+    products: List<CartItem>,
+    totalPrice: Double,
+    address: Address?
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Đặt hàng thành công", color = Color.White) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Black)
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .padding(paddingValues)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.successful),
+                contentDescription = "Success",
+                tint = Color.Unspecified, // Sử dụng Color.Unspecified thay vì null
+                modifier = Modifier
+                    .size(100.dp)
+                    .padding(16.dp)
+            )
+
+            Text(
+                text = "Đặt hàng thành công!",
+                color = Color(0xFF00C853),
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1C2526))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = "Chi tiết đơn hàng",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+
+                    address?.let {
+                        Text(
+                            text = "Địa chỉ giao hàng:",
+                            color = Color(0xFFAAAAAA),
+                            fontSize = 14.sp
+                        )
+                        Text(
+                            text = "${it.name}\n${it.phone}\n${it.addressDetail}",
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                    }
+
+                    Text(
+                        text = "Sản phẩm:",
+                        color = Color(0xFFAAAAAA),
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    products.forEach { product ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "${product.title} x${product.quantity}",
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = "${DecimalFormat("#,###").format(product.price.toInt() * product.quantity)}đ",
+                                color = Color(0xFFFF0000),
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+
+                    Divider(
+                        color = Color(0xFF3A3A3A),
+                        modifier = Modifier.padding(vertical = 16.dp)
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Tổng cộng:",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "${DecimalFormat("#,###").format(totalPrice.toInt())}đ",
+                            color = Color(0xFFFF0000),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            Button(
+                onClick = {
+                    (navController.context as? ComponentActivity)?.finish()
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 24.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF0000))
+            ) {
+                Text(
+                    text = "Trở về trang chủ",
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }
