@@ -43,6 +43,9 @@ import com.example.appbanlaptop.Model.CartItem
 import com.example.appbanlaptop.R
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.ValueEventListener
 
 // Định nghĩa nguồn dữ liệu chung
 object AddressState {
@@ -804,6 +807,23 @@ fun TotalAndCheckoutButton(
 
                 newOrderRef.setValue(order)
                     .addOnSuccessListener {
+                        // Xóa các sản phẩm đã thanh toán khỏi giỏ hàng
+                        val cartRef = database.getReference("Cart").child(userId).child("items")
+                        products.forEach { product ->
+                            cartRef.orderByChild("title").equalTo(product.name)
+                                .addListenerForSingleValueEvent(object : ValueEventListener {
+                                    override fun onDataChange(snapshot: DataSnapshot) {
+                                        for (itemSnapshot in snapshot.children) {
+                                            itemSnapshot.ref.removeValue()
+                                        }
+                                    }
+
+                                    override fun onCancelled(error: DatabaseError) {
+                                        Log.e("TotalAndCheckoutButton", "Error removing cart item: ${error.message}")
+                                    }
+                                })
+                        }
+                        
                         android.widget.Toast.makeText(context, "Đặt hàng thành công!", android.widget.Toast.LENGTH_SHORT).show()
                         navController.navigate("order_success")
                     }
