@@ -54,7 +54,6 @@ class ProfileActivity : ComponentActivity() {
                         googleSignInClient.signOut().addOnCompleteListener {
                             googleSignInClient.revokeAccess().addOnCompleteListener {
                                 startActivity(Intent(this, LoginActivity::class.java))
-                                finish()
                             }
                         }
                     },
