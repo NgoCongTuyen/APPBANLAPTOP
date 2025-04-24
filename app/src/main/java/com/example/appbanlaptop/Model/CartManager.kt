@@ -8,6 +8,8 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 
 object CartManager {
     private val database = FirebaseDatabase.getInstance()
@@ -17,6 +19,7 @@ object CartManager {
     private val _cartItemsFlow = MutableStateFlow<List<CartItem>>(emptyList())
     val cartItemsFlow: StateFlow<List<CartItem>> = _cartItemsFlow
     private var isAddingItem = false
+    private var lastAddedTimestamp = System.currentTimeMillis()
 
     private val cartRef
         get() = userId?.let { database.getReference("Cart").child(it).child("items") }
@@ -30,7 +33,12 @@ object CartManager {
         return cartItems.toList()
     }
 
-    fun addCartItem(item: CartItem, onError: (String) -> Unit = {}) {
+    fun addCartItem(
+        item: CartItem, 
+        onError: (String) -> Unit = {}, 
+        onDuplicate: (String) -> Unit = {},
+        onSuccess: (String) -> Unit = {}
+    ) {
         val currentUser = FirebaseAuth.getInstance().currentUser
         if (currentUser == null) {
             Log.e("CartManager", "User not logged in, cannot add to cart")
@@ -45,11 +53,31 @@ object CartManager {
 
         cartRef?.let { ref ->
             Log.d("CartManager", "Adding cart item: $item")
+            
+            // Kiểm tra xem sản phẩm đã tồn tại trong giỏ hàng chưa
+            val existingItem = cartItems.find { it.title == item.title }
+            if (existingItem != null) {
+                // Nếu sản phẩm đã tồn tại, thông báo và đẩy lên đầu danh sách
+                onDuplicate("Sản phẩm đã có trong giỏ hàng")
+                cartItems.remove(existingItem)
+                lastAddedTimestamp = System.currentTimeMillis()
+                val updatedItem = existingItem.copy(timestamp = lastAddedTimestamp)
+                cartItems.add(0, updatedItem)
+                _cartItemsFlow.value = cartItems.toList()
+                
+                // Cập nhật lên Firebase
+                existingItem.firebaseKey?.let { key ->
+                    cartRef?.child(key)?.setValue(updatedItem)
+                }
+                return
+            }
+
             val newRef = ref.push()
-            val newItem = item.copy(firebaseKey = newRef.key)
+            lastAddedTimestamp = System.currentTimeMillis()
+            val newItem = item.copy(firebaseKey = newRef.key, timestamp = lastAddedTimestamp)
 
             isAddingItem = true
-            cartItems.add(newItem)
+            cartItems.add(0, newItem)
             _cartItemsFlow.value = cartItems.toList()
             Log.d("CartManager", "Updated cartItemsFlow locally: ${_cartItemsFlow.value}")
 
@@ -57,6 +85,7 @@ object CartManager {
                 .addOnSuccessListener {
                     Log.d("CartManager", "Successfully added item: $newItem with key: ${newRef.key}")
                     isAddingItem = false
+                    onSuccess("Đã thêm ${item.title} vào giỏ hàng")
                 }
                 .addOnFailureListener {
                     Log.e("CartManager", "Failed to add cart item: ${it.message}")
@@ -149,9 +178,13 @@ object CartManager {
                         }
                     }
 
+                    // Sắp xếp items theo timestamp giảm dần (mới nhất lên đầu)
+                    val sortedItems = updatedItems.sortedByDescending { it.timestamp }
+                    
                     val currentItemsMap = cartItems.associateBy { it.firebaseKey }
                     cartItems.clear()
-                    updatedItems.forEach { newItem ->
+                    
+                    sortedItems.forEach { newItem ->
                         val existingItem = currentItemsMap[newItem.firebaseKey]
                         if (existingItem != null) {
                             cartItems.add(newItem.copy(isSelected = existingItem.isSelected))
@@ -159,6 +192,7 @@ object CartManager {
                             cartItems.add(newItem)
                         }
                     }
+                    
                     _cartItemsFlow.value = cartItems.toList()
                     Log.d("CartManager", "Updated cartItemsFlow: ${_cartItemsFlow.value}")
                 }
