@@ -73,12 +73,23 @@ class CartScreenActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
+
+    var cartItems by remember { mutableStateOf(CartManager.getCartItems()) }
+
     val cartItems by CartManager.cartItemsFlow.collectAsState()
+
     val context = LocalContext.current
     val locale = Locale("vi", "VN")
     val numberFormat = NumberFormat.getCurrencyInstance(locale)
 
     val userId = FirebaseAuth.getInstance().currentUser?.uid ?: "Unknown User"
+
+    LaunchedEffect(Unit) {
+        CartManager.cartItemsFlow.collectLatest { updatedItems ->
+            Log.d("CartScreen", "Cart items updated: size=${updatedItems.size}, items=$updatedItems")
+            cartItems = updatedItems
+        }
+    }
 
     val selectedItemsTotal by remember(cartItems) {
         derivedStateOf {
@@ -221,6 +232,12 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
                                         putParcelableArrayListExtra("CHECKOUT_ITEMS", ArrayList(itemsToCheckout))
                                         putExtra("TOTAL_PRICE", selectedItemsTotal)
                                     }
+                                    try {
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {
+                                        Log.e("CartScreen", "Failed to start PaymentActivity: ${e.message}")
+                                        Toast.makeText(context, "Lỗi khi mở thanh toán: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    }
                                     context.startActivity(intent)
                                 } else {
                                     Toast.makeText(context, "Vui lòng chọn ít nhất một sản phẩm để thanh toán", Toast.LENGTH_SHORT).show()
@@ -247,7 +264,6 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
     )
 }
 
-
 @Composable
 fun CartItemCard(
     cartItem: CartItem,
@@ -258,9 +274,6 @@ fun CartItemCard(
     val context = LocalContext.current
     val locale = Locale("vi", "VN")
     val numberFormat = NumberFormat.getCurrencyInstance(locale)
-
-    // Trạng thái cục bộ để hiển thị ngay lập tức
-    var isSelected by remember(cartItem.firebaseKey) { mutableStateOf(cartItem.isSelected) }
 
     Card(
         modifier = Modifier
@@ -276,10 +289,9 @@ fun CartItemCard(
         ) {
             // Selection checkbox
             Checkbox(
-                checked = isSelected,
+                checked = cartItem.isSelected, // Lấy trực tiếp từ cartItem
                 onCheckedChange = { isChecked ->
                     Log.d("CartItemCard", "Checkbox clicked for ${cartItem.title}, new state: $isChecked, firebaseKey: ${cartItem.firebaseKey}")
-                    isSelected = isChecked // Cập nhật trạng thái cục bộ ngay lập tức
                     onSelectChange(isChecked)
                 },
                 modifier = Modifier
@@ -343,7 +355,7 @@ fun CartItemCard(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = cartItem.title,
+                    text = cartItem.title ?: "Unknown Item",
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
                     maxLines = 1,
@@ -355,7 +367,13 @@ fun CartItemCard(
                 Column(
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    val totalPrice = cartItem.price * cartItem.quantity
+                    // Sử dụng derivedStateOf để đảm bảo giá cập nhật khi quantity thay đổi
+                    val totalPrice by remember(cartItem.quantity, cartItem.price) {
+                        derivedStateOf {
+                            cartItem.price
+//                            cartItem.price * cartItem.quantity
+                        }
+                    }
                     val formattedPrice = numberFormat.format(totalPrice)
                     Text(
                         text = formattedPrice,

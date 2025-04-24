@@ -29,6 +29,8 @@ import android.util.Log
 import android.os.Parcelable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBackIosNew
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -164,7 +166,7 @@ fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, t
                         (navController.context as? ComponentActivity)?.finish()
                     }) {
                         Icon(
-                            painter = painterResource(R.drawable.back),
+                            imageVector = Icons.Default.ArrowBackIosNew,
                             contentDescription = "Back",
                             tint = Color.Blue,
                             modifier = Modifier.size(24.dp)

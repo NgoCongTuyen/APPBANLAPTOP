@@ -26,6 +26,26 @@
             setupListener()
         }
 
+    fun updateCartItem(item: CartItem) {
+        item.firebaseKey?.let { key ->
+            cartRef?.child(key)?.setValue(item)
+                ?.addOnSuccessListener {
+                    Log.d("CartManager", "Successfully updated item: $item")
+                    val index = cartItems.indexOfFirst { it.firebaseKey == key }
+                    if (index != -1) {
+                        cartItems[index] = item
+                        _cartItemsFlow.value = cartItems.toList()
+                        Log.d("CartManager", "Updated cartItemsFlow after update: ${_cartItemsFlow.value}")
+                    } else {
+                        Log.w("CartManager", "Item with key $key not found in local list")
+                    }
+                }
+                ?.addOnFailureListener {
+                    Log.e("CartManager", "Failed to update cart item: ${it.message}")
+                }
+        } ?: Log.e("CartManager", "Cannot update item: firebaseKey is null")
+    }
+
         fun addCartItem(item: CartItem, onError: (String) -> Unit = {}) {
             val currentUser = FirebaseAuth.getInstance().currentUser
             if (currentUser == null) {
