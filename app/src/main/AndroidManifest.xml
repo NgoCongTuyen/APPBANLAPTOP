@@ -24,7 +24,6 @@
             android:theme="@style/Theme.APPBANLAPTOP">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
@@ -37,12 +36,12 @@
             android:label="@string/app_name"
             android:theme="@style/Theme.APPBANLAPTOP" />
         <activity android:name=".cart.CartScreenActivity" />
-
         <activity android:name=".Activity.DetailsItemsActivity" />
         <activity android:name=".Activity.LoginActivity" />
         <activity android:name=".Activity.SignUpActivity" />
         <activity android:name=".Activity.ProfileActivity" />
         <activity android:name=".payment.PaymentActivity" />
+        <activity android:name=".Activity.OrderActivity" />
     </application>
 
 </manifest>

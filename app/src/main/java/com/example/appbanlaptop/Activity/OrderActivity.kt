@@ -24,6 +24,11 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
 import java.util.*
@@ -35,10 +40,54 @@ data class Order(
     val orderId: String,
     val orderDate: Date,
     val items: List<OrderItem>,
-    val totalAmount: Double,
+    val totalAmount: Double, // Đây là tổng tiền từ database, có thể bao gồm phí bổ sung
     val status: OrderStatus,
-    val shippingAddress: String
-) : android.os.Parcelable
+    val shippingAddress: String,
+    val recipientName: String, // Tên người nhận
+    val recipientPhone: String // Số điện thoại người nhận
+) : android.os.Parcelable {
+    companion object {
+        fun fromMap(orderId: String, map: Map<String, Any>): Order {
+            val addressMap = map["address"] as? Map<String, Any> ?: emptyMap()
+            val productsList = map["products"] as? List<Map<String, Any>> ?: emptyList()
+            val createdAt = (map["createdAt"] as? Long) ?: 0L
+            val totalPrice = (map["totalPrice"] as? Number)?.toDouble() ?: 0.0 // Xử lý cả Long và Double
+            val statusString = map["status"] as? String ?: "pending"
+
+            val items = productsList.map { productMap ->
+                OrderItem(
+                    productName = productMap["name"] as? String ?: "Unknown Item",
+                    quantity = (productMap["quantity"] as? Long)?.toInt() ?: 1,
+                    price = (productMap["price"] as? String)?.toDoubleOrNull()
+                        ?: (productMap["price"] as? Number)?.toDouble() ?: 0.0, // Xử lý cả String và Number
+                    imageUrl = productMap["imageUrl"] as? String
+                )
+            }
+
+            // Tính lại tổng tiền của các sản phẩm (không bao gồm phí bổ sung)
+            val itemsTotal = items.sumOf { it.price * it.quantity }
+
+            return Order(
+                orderId = orderId,
+                orderDate = Date(createdAt),
+                items = items,
+                totalAmount = totalPrice, // Lưu tổng tiền từ database
+                status = OrderStatus.valueOf(statusString.uppercase()),
+                shippingAddress = addressMap["addressDetail"] as? String ?: "Unknown Address",
+                recipientName = addressMap["name"] as? String ?: "Unknown Name",
+                recipientPhone = addressMap["phone"] as? String ?: "Unknown Phone"
+            )
+        }
+    }
+
+    // Tính tổng tiền của các sản phẩm (không bao gồm phí bổ sung)
+    val itemsTotal: Double
+        get() = items.sumOf { it.price * it.quantity }
+
+    // Kiểm tra xem có phí bổ sung không (phí vận chuyển, thuế, v.v.)
+    val additionalFee: Double
+        get() = totalAmount - itemsTotal
+}
 
 @Parcelize
 data class OrderItem(
@@ -52,76 +101,68 @@ enum class OrderStatus {
     PENDING, CONFIRMED, SHIPPING, DELIVERED, CANCELLED
 }
 
-// Object để lưu trữ danh sách đơn hàng toàn cục
-object OrderState {
-    val orders = mutableStateListOf<Order>().apply {
-        addAll(createSampleOrders())
-    }
-
-    private fun createSampleOrders(): List<Order> {
-        return listOf(
-            Order(
-                orderId = "OD001",
-                orderDate = Date(),
-                items = listOf(
-                    OrderItem(
-                        productName = "MacBook Pro M1",
-                        quantity = 1,
-                        price = 29990000.0,
-                        imageUrl = null
-                    ),
-                    OrderItem(
-                        productName = "Magic Mouse",
-                        quantity = 1,
-                        price = 2490000.0,
-                        imageUrl = null
-                    )
-                ),
-                totalAmount = 32480000.0,
-                status = OrderStatus.DELIVERED,
-                shippingAddress = "59/22C Mã Lò, Bình Trị Đông A, Bình Tân, Hồ Chí Minh"
-            )
-        )
-    }
-}
-
 class OrderActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Nhận đơn hàng mới từ Intent
-        intent.getParcelableExtra<Order>("NEW_ORDER")?.let { newOrder ->
-            Log.d("OrderActivity", "Received new order: $newOrder")
-            if (!OrderState.orders.any { it.orderId == newOrder.orderId }) {
-                OrderState.orders.add(0, newOrder) // Thêm vào đầu danh sách
-                Toast.makeText(this, "Đã thêm đơn hàng mới: ${newOrder.orderId}", Toast.LENGTH_SHORT).show()
-            } else {
-                Log.d("OrderActivity", "Order ${newOrder.orderId} already exists, skipping")
-            }
-        } ?: run {
-            Log.d("OrderActivity", "No new order received in Intent")
-        }
-
-        // Log danh sách đơn hàng hiện tại
-        Log.d("OrderActivity", "Current orders: ${OrderState.orders}")
-
         setContent {
             val navController = rememberNavController()
+            val orders = remember { mutableStateListOf<Order>() }
+            val userId = FirebaseAuth.getInstance().currentUser?.uid
+
+            // Lấy dữ liệu đơn hàng từ Firebase Realtime Database
+            LaunchedEffect(userId) {
+                if (userId == null) {
+                    Toast.makeText(this@OrderActivity, "Vui lòng đăng nhập để xem đơn hàng", Toast.LENGTH_SHORT).show()
+                    return@LaunchedEffect
+                }
+
+                val database = FirebaseDatabase.getInstance()
+                val ordersRef = database.getReference("orders").child(userId)
+
+                ordersRef.addValueEventListener(object : ValueEventListener {
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        val orderList = mutableListOf<Order>()
+                        for (orderSnapshot in snapshot.children) {
+                            val orderId = orderSnapshot.key ?: continue
+                            val orderMap = orderSnapshot.value as? Map<String, Any> ?: continue
+                            try {
+                                val order = Order.fromMap(orderId, orderMap)
+                                orderList.add(order)
+                            } catch (e: Exception) {
+                                Log.e("OrderActivity", "Error parsing order $orderId: ${e.message}", e)
+                            }
+                        }
+                        // Sắp xếp theo ngày đặt hàng (mới nhất trước)
+                        orders.clear()
+                        orders.addAll(orderList.sortedByDescending { it.orderDate })
+                        Log.d("OrderActivity", "Loaded orders: $orders")
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
+                        Log.e("OrderActivity", "Error loading orders: ${error.message}", error.toException())
+                        Toast.makeText(this@OrderActivity, "Lỗi khi tải đơn hàng: ${error.message}", Toast.LENGTH_SHORT).show()
+                    }
+                })
+            }
+
             NavHost(navController = navController, startDestination = "order_list") {
                 composable("order_list") {
-                    OrderListScreen(orders = OrderState.orders) { order ->
+                    OrderListScreen(orders = orders) { order ->
                         navController.navigate("order_detail/${order.orderId}")
                     }
                 }
                 composable("order_detail/{orderId}") { backStackEntry ->
                     val orderId = backStackEntry.arguments?.getString("orderId")
-                    val order = OrderState.orders.find { it.orderId == orderId }
+                    val order = orders.find { it.orderId == orderId }
                     if (order != null) {
                         OrderDetailScreen(order = order, onBackClick = {
                             navController.popBackStack()
                         })
                     } else {
                         Log.e("OrderActivity", "Order with ID $orderId not found")
+                        Toast.makeText(this@OrderActivity, "Không tìm thấy đơn hàng", Toast.LENGTH_SHORT).show()
+                        navController.popBackStack()
                     }
                 }
             }
@@ -222,8 +263,9 @@ fun OrderItem(order: Order, onClick: () -> Unit) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // Hiển thị tổng tiền dựa trên itemsTotal
             Text(
-                text = "Tổng tiền: ${DecimalFormat("#,###").format(order.totalAmount)}đ",
+                text = "Tổng tiền: ${DecimalFormat("#,###").format(order.itemsTotal)}đ",
                 color = Color(0xFFFF0000),
                 fontWeight = FontWeight.Bold
             )
@@ -331,12 +373,22 @@ fun OrderDetailScreen(order: Order, onBackClick: () -> Unit) {
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Text(
-                            text = "Địa chỉ giao hàng",
+                            text = "Thông tin giao hàng",
                             color = Color.Gray,
                             fontSize = 14.sp
                         )
                         Text(
-                            text = order.shippingAddress,
+                            text = "Tên người nhận: ${order.recipientName}",
+                            color = Color.Black,
+                            fontSize = 16.sp
+                        )
+                        Text(
+                            text = "Số điện thoại: ${order.recipientPhone}",
+                            color = Color.Black,
+                            fontSize = 16.sp
+                        )
+                        Text(
+                            text = "Địa chỉ: ${order.shippingAddress}",
                             color = Color.Black,
                             fontSize = 16.sp
                         )
@@ -386,13 +438,56 @@ fun OrderDetailScreen(order: Order, onBackClick: () -> Unit) {
                         Divider(color = Color(0xFFEEEEEE))
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Tổng tiền
+                        // Hiển thị chi tiết giá
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "Tổng tiền",
+                                text = "Tổng tiền sản phẩm",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = Color.Black
+                            )
+                            Text(
+                                text = "${DecimalFormat("#,###").format(order.itemsTotal)}đ",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = Color.Black
+                            )
+                        }
+
+                        // Nếu có phí bổ sung (phí vận chuyển, thuế, v.v.), hiển thị riêng
+                        if (order.additionalFee > 0) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Phí bổ sung",
+                                    fontSize = 14.sp,
+                                    color = Color.Gray
+                                )
+                                Text(
+                                    text = "+${DecimalFormat("#,###").format(order.additionalFee)}đ",
+                                    fontSize = 14.sp,
+                                    color = Color.Gray
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Divider(color = Color(0xFFEEEEEE))
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Tổng tiền cuối cùng (bao gồm phí bổ sung nếu có)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Tổng tiền thanh toán",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 18.sp,
                                 color = Color.Black
