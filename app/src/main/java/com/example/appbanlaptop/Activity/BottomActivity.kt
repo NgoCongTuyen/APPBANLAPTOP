@@ -62,7 +62,13 @@ object BottomActivity {
             )
             BottomMenuItem(
                 icon = painterResource(R.drawable.btn_4),
-                text = "Order"
+                text = "Order",
+                onItemClick = {
+                    if (context !is OrderActivity) {
+                        val intent = Intent(context, OrderActivity::class.java)
+                        context.startActivity(intent)
+                    }
+                }
             )
             BottomMenuItem(
                 icon = painterResource(id = R.drawable.btn_5),

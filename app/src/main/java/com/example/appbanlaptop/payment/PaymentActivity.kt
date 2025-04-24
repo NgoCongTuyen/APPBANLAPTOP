@@ -1,5 +1,6 @@
 package com.example.appbanlaptop.payment
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -43,6 +44,14 @@ import coil.request.ImageRequest
 import com.example.appbanlaptop.Model.CartItem
 import com.example.appbanlaptop.R
 import kotlinx.parcelize.Parcelize
+import android.widget.Toast
+import androidx.navigation.compose.currentBackStackEntryAsState
+import com.example.appbanlaptop.Activity.OrderActivity
+import com.example.appbanlaptop.Activity.Order
+import com.example.appbanlaptop.Activity.OrderItem
+import com.example.appbanlaptop.Activity.OrderStatus
+import com.example.appbanlaptop.MainActivity
+import java.util.*
 
 // Định nghĩa nguồn dữ liệu chung
 object AddressState {
@@ -82,11 +91,14 @@ class PaymentActivity : ComponentActivity() {
                         AddAddressScreen(navController, addressToEdit) // Chỉnh sửa
                     }
                     composable("order_success") {
+                        val selectedAddress = navController.previousBackStackEntry
+                            ?.savedStateHandle
+                            ?.get<Address>("selected_address")
                         OrderSuccessScreen(
                             navController = navController,
                             products = checkoutItems,
                             totalPrice = totalPrice,
-                            address = AddressState.addresses.firstOrNull { it.isDefault }
+                            address = selectedAddress
                         )
                     }
                 }
@@ -182,7 +194,8 @@ fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, t
             TotalAndCheckoutButton(
                 productsSize = products.size,
                 totalPrice = totalPrice.toInt(),
-                navController = navController
+                navController = navController,
+                selectedAddress = selectedAddress
             )
         }
     ) { paddingValues ->
@@ -378,8 +391,8 @@ fun AddAddressScreen(navController: NavController, addressToEdit: Address?) {
     val isPhoneValid = newPhone.isNotBlank() && newPhone.length == 10 && newPhone.startsWith("0") && newPhone.all { it.isDigit() }
     val isProvinceValid = newProvince.isNotBlank()
     val isDistrictValid = newDistrict.isNotBlank()
-    val isWardValid = newWard.isNotBlank()
-    val isAddressDetailValid = newAddressDetail.isNotBlank()
+    var isWardValid = newWard.isNotBlank()
+    var isAddressDetailValid = newAddressDetail.isNotBlank()
     val isFormValid = isNameValid && isPhoneValid && isProvinceValid && isDistrictValid && isWardValid && isAddressDetailValid
 
     Scaffold(
@@ -598,8 +611,7 @@ fun ProductItem(product: Product, onQuantityChange: (Int) -> Unit) {
                 .height(120.dp)
                 .clip(RoundedCornerShape(8.dp)),
             contentAlignment = Alignment.Center
-        )
-        {
+        ) {
             if (product.imageUrl != null && product.imageUrl.isNotEmpty()) {
                 var isImageLoading by remember(product.imageUrl) { mutableStateOf(true) }
                 var isImageError by remember(product.imageUrl) { mutableStateOf(false) }
@@ -738,7 +750,8 @@ fun PaymentOption(name: String, isSelected: Boolean, onClick: () -> Unit) {
 fun TotalAndCheckoutButton(
     productsSize: Int,
     totalPrice: Int,
-    navController: NavController
+    navController: NavController,
+    selectedAddress: Address?
 ) {
     val formatter = DecimalFormat("#,###")
     val formattedTotal = "${formatter.format(totalPrice)}đ"
@@ -755,8 +768,18 @@ fun TotalAndCheckoutButton(
             Text(text = formattedTotal, color = Color(0xFFFF0000), fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
         Button(
-            onClick = { 
-                navController.navigate("order_success")
+            onClick = {
+                if (selectedAddress != null) {
+                    navController.currentBackStackEntry?.savedStateHandle?.set("selected_address", selectedAddress)
+                    navController.navigate("order_success")
+                } else {
+                    // Hiển thị thông báo yêu cầu chọn địa chỉ
+                    Toast.makeText(
+                        navController.context,
+                        "Vui lòng chọn địa chỉ giao hàng",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             },
             modifier = Modifier
                 .height(48.dp)
@@ -795,7 +818,7 @@ fun OrderSuccessScreen(
             Icon(
                 painter = painterResource(id = R.drawable.successful),
                 contentDescription = "Success",
-                tint = Color.Unspecified, // Sử dụng Color.Unspecified thay vì null
+                tint = Color.Unspecified,
                 modifier = Modifier
                     .size(100.dp)
                     .padding(16.dp)
@@ -840,7 +863,12 @@ fun OrderSuccessScreen(
                             fontSize = 14.sp,
                             modifier = Modifier.padding(bottom = 16.dp)
                         )
-                    }
+                    } ?: Text(
+                        text = "Không có địa chỉ được chọn",
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
 
                     Text(
                         text = "Sản phẩm:",
@@ -896,7 +924,35 @@ fun OrderSuccessScreen(
 
             Button(
                 onClick = {
-                    (navController.context as? ComponentActivity)?.finish()
+                    val context = navController.context
+                    // Tạo Order từ dữ liệu đặt hàng
+                    val orderItems = products.map { cartItem ->
+                        val product = Product.fromCartItem(cartItem)
+                        Log.d("OrderSuccessScreen", "Mapping CartItem to OrderItem: $product")
+                        OrderItem(
+                            productName = product.name,
+                            quantity = product.quantity,
+                            price = product.price.toDoubleOrNull() ?: 0.0,
+                            imageUrl = product.imageUrl
+                        )
+                    }
+                    val newOrder = Order(
+                        orderId = "OD${System.currentTimeMillis()}",
+                        orderDate = Date(),
+                        items = orderItems,
+                        totalAmount = totalPrice,
+                        status = OrderStatus.PENDING,
+                        shippingAddress = address?.addressDetail ?: "Không có địa chỉ"
+                    )
+                    Log.d("OrderSuccessScreen", "Created new order: $newOrder")
+                    // Gửi đơn hàng đến OrderActivity và mở ngay
+                    val orderIntent = Intent(context, OrderActivity::class.java).apply {
+                        putExtra("NEW_ORDER", newOrder)
+                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    }
+                    context.startActivity(orderIntent)
+                    // Đóng PaymentActivity
+                    (context as? ComponentActivity)?.finish()
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -904,7 +960,7 @@ fun OrderSuccessScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF0000))
             ) {
                 Text(
-                    text = "Trở về trang chủ",
+                    text = "Xem lịch sử đơn hàng",
                     color = Color.White,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
