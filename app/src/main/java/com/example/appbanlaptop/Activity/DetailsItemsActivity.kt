@@ -89,8 +89,18 @@ class DetailsItemsActivity : ComponentActivity() {
                         isSelected = true
                     )
                     Log.d("DetailsItemsActivity", "Adding cart item: $cartItem")
-                    CartManager.addCartItem(cartItem)
-                    Toast.makeText(this, "Đã thêm $title vào giỏ hàng", Toast.LENGTH_SHORT).show()
+                    CartManager.addCartItem(
+                        cartItem,
+                        onError = { errorMessage ->
+                            Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show()
+                        },
+                        onDuplicate = { message ->
+                            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+                        },
+                        onSuccess = { message ->
+                            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+                        }
+                    )
                 },
                 onBuyNowClick = { /* TODO: Thêm logic mua ngay */ }
             )

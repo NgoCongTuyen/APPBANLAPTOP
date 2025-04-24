@@ -13,7 +13,8 @@ data class CartItem(
     val quantity: Int = 1,
     val isSelected: Boolean = false,
     val firebaseKey: String? = null,
-    val maxStock: Int = 100 // Thêm thuộc tính maxStock, mặc định là 100
+    val maxStock: Int = 100, // Thêm thuộc tính maxStock, mặc định là 100
+    val timestamp: Long = System.currentTimeMillis() // Thêm trường timestamp
 ) : Parcelable {
 
 }
