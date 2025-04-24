@@ -582,10 +582,12 @@ fun ProductItem(product: Product, onQuantityChange: (Int) -> Unit) {
         // Hiển thị hình ảnh sản phẩm
         Box(
             modifier = Modifier
-                .size(80.dp)
+                .width(100.dp)
+                .height(120.dp)
                 .clip(RoundedCornerShape(8.dp)),
             contentAlignment = Alignment.Center
-        ) {
+        )
+        {
             if (product.imageUrl != null && product.imageUrl.isNotEmpty()) {
                 var isImageLoading by remember(product.imageUrl) { mutableStateOf(true) }
                 var isImageError by remember(product.imageUrl) { mutableStateOf(false) }
@@ -600,7 +602,7 @@ fun ProductItem(product: Product, onQuantityChange: (Int) -> Unit) {
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(RoundedCornerShape(8.dp)),
-                    contentScale = ContentScale.Crop,
+                    contentScale = ContentScale.Fit,
                     placeholder = painterResource(R.drawable.loadding),
                     error = painterResource(R.drawable.error),
                     onLoading = { isImageLoading = true },
