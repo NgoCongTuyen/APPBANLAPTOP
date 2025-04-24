@@ -1,5 +1,6 @@
 package com.example.appbanlaptop.Activity
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -38,6 +39,7 @@ import coil.request.ImageRequest
 import com.example.appbanlaptop.Model.CartItem
 import com.example.appbanlaptop.Model.CartManager
 import com.example.appbanlaptop.R
+import com.example.appbanlaptop.payment.PaymentActivity
 import com.google.firebase.auth.FirebaseAuth
 
 class DetailsItemsActivity : ComponentActivity() {
@@ -102,7 +104,31 @@ class DetailsItemsActivity : ComponentActivity() {
                         }
                     )
                 },
-                onBuyNowClick = { /* TODO: Thêm logic mua ngay */ }
+                onBuyNowClick = {
+                    // Xử lý mua ngay
+                    val cleanedPrice = price.replace("[^0-9]".toRegex(), "")
+                    val priceValue = cleanedPrice.toDoubleOrNull() ?: 0.0
+
+                    val cartItem = CartItem(
+                        id = 0,
+                        title = title,
+                        details = description,
+                        price = priceValue,
+                        imageUrl = picUrl,
+                        quantity = 1,
+                        isSelected = true
+                    )
+
+                    // Tạo danh sách sản phẩm để thanh toán
+                    val checkoutItems = listOf(cartItem)
+                    
+                    // Chuyển đến trang thanh toán
+                    val intent = Intent(this, PaymentActivity::class.java).apply {
+                        putParcelableArrayListExtra("CHECKOUT_ITEMS", ArrayList(checkoutItems))
+                        putExtra("TOTAL_PRICE", priceValue)
+                    }
+                    startActivity(intent)
+                }
             )
         }
     }
