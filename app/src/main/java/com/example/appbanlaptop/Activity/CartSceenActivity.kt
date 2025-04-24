@@ -78,6 +78,7 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
     val context = LocalContext.current
     val locale = Locale("vi", "VN")
     val numberFormat = NumberFormat.getCurrencyInstance(locale)
+    val isSelectAll = remember { mutableStateOf(false) }
 
     // Lấy userId từ FirebaseAuth
     val userId = FirebaseAuth.getInstance().currentUser?.uid ?: "Unknown User"
@@ -87,6 +88,8 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
         CartManager.cartItemsFlow.collectLatest { updatedItems ->
             Log.d("CartScreen", "Cart items updated: size=${updatedItems.size}, items=$updatedItems")
             cartItems = updatedItems
+            // Cập nhật trạng thái chọn tất cả
+            isSelectAll.value = updatedItems.all { it.isSelected }
         }
     }
 
@@ -170,6 +173,31 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
                         .background(Color(0xFFF6F6F6))
                         .padding(paddingValues)
                 ) {
+                    // Thêm checkbox chọn tất cả
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = isSelectAll.value,
+                                onCheckedChange = { isChecked ->
+                                    isSelectAll.value = isChecked
+                                    cartItems.forEach { item ->
+                                        val updatedItem = item.copy(isSelected = isChecked)
+                                        CartManager.updateCartItem(updatedItem)
+                                    }
+                                }
+                            )
+                            Text(
+                                text = "Chọn tất cả",
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+
                     // Hiển thị userId, tổng số sản phẩm và tổng giá của tất cả sản phẩm
                     item {
                         Column(
@@ -205,6 +233,8 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
                                 Log.d("CartScreen", "Updating selection for item: ${cartItem.title}, isSelected=$isSelected")
                                 val updatedItem = cartItem.copy(isSelected = isSelected)
                                 CartManager.updateCartItem(updatedItem)
+                                // Cập nhật trạng thái chọn tất cả
+                                isSelectAll.value = cartItems.all { it.isSelected }
                             },
                             onQuantityChange = { newQuantity ->
                                 Log.d("CartScreen", "Changing quantity for item: ${cartItem.title}, newQuantity=$newQuantity")
