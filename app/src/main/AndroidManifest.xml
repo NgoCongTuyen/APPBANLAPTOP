@@ -43,6 +43,8 @@
         <activity android:name=".Activity.SignUpActivity" />
         <activity android:name=".Activity.ProfileActivity" />
         <activity android:name=".payment.PaymentActivity" />
+        <activity android:name=".Activity.OrderActivity" />
+
     </application>
 
 </manifest>
