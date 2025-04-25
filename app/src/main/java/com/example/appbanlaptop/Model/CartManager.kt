@@ -146,6 +146,7 @@ object CartManager {
     private fun setupListener() {
         cleanup()
         cartRef?.let { ref ->
+            // Khởi tạo node giỏ hàng nếu chưa tồn tại
             ref.get().addOnSuccessListener { snapshot ->
                 if (!snapshot.exists()) {
                     Log.d("CartManager", "Cart node does not exist, initializing empty node")
@@ -156,56 +157,40 @@ object CartManager {
             valueEventListener = object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     Log.d("CartManager", "Data changed, snapshot: $snapshot")
+                    cartItems.clear()
+                    
                     if (!snapshot.exists() || snapshot.childrenCount.toInt() == 0) {
                         Log.d("CartManager", "Cart is empty")
-                        cartItems.clear()
                         _cartItemsFlow.value = emptyList()
                         return
                     }
 
-                    val updatedItems = mutableListOf<CartItem>()
-                    for (item in snapshot.children) {
+                    for (childSnapshot in snapshot.children) {
                         try {
-                            val cartItem = item.getValue(CartItem::class.java)
-                            if (cartItem != null) {
-                                val key = item.key ?: "unknown"
-                                val updatedItem = cartItem.copy(firebaseKey = key)
-                                updatedItems.add(updatedItem)
-                                Log.d("CartManager", "Added item: $updatedItem")
+                            val cartItem = childSnapshot.getValue(CartItem::class.java)
+                            cartItem?.let {
+                                val itemWithKey = it.copy(firebaseKey = childSnapshot.key)
+                                cartItems.add(itemWithKey)
+                                Log.d("CartManager", "Added item to local list: $itemWithKey")
                             }
                         } catch (e: Exception) {
-                            Log.e("CartManager", "Error parsing cart item: ${item.key}, error: ${e.message}")
+                            Log.e("CartManager", "Error parsing cart item: ${e.message}")
                         }
                     }
 
-                    // Sắp xếp items theo timestamp giảm dần (mới nhất lên đầu)
-                    val sortedItems = updatedItems.sortedByDescending { it.timestamp }
-                    
-                    val currentItemsMap = cartItems.associateBy { it.firebaseKey }
-                    cartItems.clear()
-                    
-                    sortedItems.forEach { newItem ->
-                        val existingItem = currentItemsMap[newItem.firebaseKey]
-                        if (existingItem != null) {
-                            cartItems.add(newItem.copy(isSelected = existingItem.isSelected))
-                        } else {
-                            cartItems.add(newItem)
-                        }
-                    }
-                    
+                    // Sắp xếp theo timestamp mới nhất
+                    cartItems.sortByDescending { it.timestamp }
                     _cartItemsFlow.value = cartItems.toList()
-                    Log.d("CartManager", "Updated cartItemsFlow: ${_cartItemsFlow.value}")
+                    Log.d("CartManager", "Updated cartItemsFlow with ${cartItems.size} items")
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    Log.e("CartManager", "Database error: ${error.message}")
-                    _cartItemsFlow.value = cartItems.toList()
+                    Log.e("CartManager", "Error in Firebase listener: ${error.message}")
                 }
             }
-            valueEventListener?.let {
-                ref.addValueEventListener(it)
-                Log.d("CartManager", "Firebase listener set up for user: $userId")
-            }
+
+            ref.addValueEventListener(valueEventListener!!)
+            Log.d("CartManager", "Added Firebase listener")
         }
     }
 }
