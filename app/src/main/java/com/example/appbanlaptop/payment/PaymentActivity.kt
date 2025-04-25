@@ -88,8 +88,7 @@ class PaymentActivity : ComponentActivity() {
                         OrderSuccessScreen(
                             navController = navController,
                             products = checkoutItems,
-                            totalPrice = totalPrice,
-                            address = AddressState.addresses.firstOrNull { it.isDefault }
+                            totalPrice = totalPrice
                         )
                     }
                 }
@@ -847,9 +846,40 @@ fun TotalAndCheckoutButton(
 fun OrderSuccessScreen(
     navController: NavController,
     products: List<CartItem>,
-    totalPrice: Double,
-    address: Address?
+    totalPrice: Double
 ) {
+    var orderAddress by remember { mutableStateOf<Address?>(null) }
+
+    // Truy xuất đơn hàng mới nhất từ Firebase
+    LaunchedEffect(Unit) {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+        if (userId != null) {
+            val database = FirebaseDatabase.getInstance()
+            val ordersRef = database.getReference("orders").child(userId)
+            ordersRef.orderByChild("createdAt").limitToLast(1)
+                .addListenerForSingleValueEvent(object : ValueEventListener {
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        for (orderSnapshot in snapshot.children) {
+                            val addressMap = orderSnapshot.child("address").value as? Map<String, Any>
+                            addressMap?.let {
+                                orderAddress = Address(
+                                    name = it["name"] as? String ?: "",
+                                    phone = it["phone"] as? String ?: "",
+                                    addressDetail = it["addressDetail"] as? String ?: "",
+                                    isDefault = it["isDefault"] as? Boolean ?: false
+                                )
+                                Log.d("OrderSuccessScreen", "Fetched address from Firebase: $orderAddress")
+                            }
+                        }
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
+                        Log.e("OrderSuccessScreen", "Error fetching order: ${error.message}")
+                    }
+                })
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -902,7 +932,7 @@ fun OrderSuccessScreen(
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
 
-                    address?.let {
+                    orderAddress?.let {
                         Text(
                             text = "Địa chỉ giao hàng:",
                             color = Color(0xFFAAAAAA),
@@ -914,7 +944,12 @@ fun OrderSuccessScreen(
                             fontSize = 14.sp,
                             modifier = Modifier.padding(bottom = 16.dp)
                         )
-                    }
+                    } ?: Text(
+                        text = "Đang tải địa chỉ giao hàng...",
+                        color = Color(0xFFAAAAAA),
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
 
                     Text(
                         text = "Sản phẩm:",
