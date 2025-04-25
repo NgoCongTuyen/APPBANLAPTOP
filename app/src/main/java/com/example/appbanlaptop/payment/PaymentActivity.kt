@@ -779,8 +779,14 @@ fun TotalAndCheckoutButton(
                     return@Button
                 }
 
+                // Tạo ID đơn hàng ngắn
+                val timestamp = System.currentTimeMillis()
+                val random = (Math.random() * 1000).toInt()
+                val orderId = "${timestamp.toString().takeLast(6)}${random.toString().padStart(3, '0')}"
+
                 // Tạo dữ liệu đơn hàng
                 val order = mapOf(
+                    "orderId" to orderId,
                     "address" to mapOf(
                         "name" to selectedAddress.name,
                         "phone" to selectedAddress.phone,
@@ -798,13 +804,13 @@ fun TotalAndCheckoutButton(
                     },
                     "totalPrice" to totalPrice,
                     "status" to "pending",
-                    "createdAt" to System.currentTimeMillis()
+                    "createdAt" to timestamp
                 )
 
                 // Lưu vào Realtime Database
                 val database = FirebaseDatabase.getInstance()
                 val ordersRef = database.getReference("orders").child(userId)
-                val newOrderRef = ordersRef.push() // Tạo ID duy nhất cho đơn hàng
+                val newOrderRef = ordersRef.child(orderId) // Sử dụng orderId làm key
 
                 newOrderRef.setValue(order)
                     .addOnSuccessListener {
