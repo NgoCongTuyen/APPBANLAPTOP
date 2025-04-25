@@ -34,6 +34,15 @@ import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.parcelize.Parcelize
 
+// Extension function để rút gọn orderId
+fun String.shortenOrderId(maxLength: Int = 8): String {
+    return if (this.length <= maxLength) {
+        this
+    } else {
+        "${this.take(maxLength)}..."
+    }
+}
+
 // Data class để lưu thông tin đơn hàng
 @Parcelize
 data class Order(
@@ -188,7 +197,10 @@ fun OrderListScreen(orders: List<Order>, onOrderClick: (Order) -> Unit) {
                     containerColor = Color.White
                 )
             )
-        }
+        },
+        bottomBar = {
+            BottomActivity.BottomMenu(onItemClick = {})
+        },
     ) { paddingValues ->
         if (orders.isEmpty()) {
             Box(
@@ -238,7 +250,7 @@ fun OrderItem(order: Order, onClick: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Đơn hàng #${order.orderId}",
+                    text = "Đơn hàng #${order.orderId.shortenOrderId()}",
                     fontWeight = FontWeight.Bold,
                     color = Color.Black
                 )
@@ -347,7 +359,7 @@ fun OrderDetailScreen(order: Order, onBackClick: () -> Unit) {
                     ) {
                         // Thông tin đơn hàng
                         Text(
-                            text = "Đơn hàng #${order.orderId}",
+                            text = "Đơn hàng #${order.orderId.shortenOrderId()}",
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
                             color = Color.Black

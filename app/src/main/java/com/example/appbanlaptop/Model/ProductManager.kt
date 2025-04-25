@@ -22,7 +22,7 @@ data class Product(
 
 object ProductManager {
     private val database = FirebaseDatabase.getInstance()
-    private val productsRef = database.getReference("Products")
+    private val productsRef = database.getReference("Items")
     private val products = mutableListOf<Product>()
     private val _productsFlow = MutableStateFlow<List<Product>>(emptyList())
     val productsFlow: StateFlow<List<Product>> = _productsFlow

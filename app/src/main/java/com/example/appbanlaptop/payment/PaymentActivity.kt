@@ -1,5 +1,6 @@
 package com.example.appbanlaptop.payment
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -39,6 +40,7 @@ import androidx.room.util.copy
 import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
+import com.example.appbanlaptop.MainActivity
 import com.example.appbanlaptop.Model.CartItem
 import com.example.appbanlaptop.R
 import com.google.firebase.auth.FirebaseAuth
@@ -853,7 +855,7 @@ fun OrderSuccessScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Đặt hàng thành công", color = Color.White) },
+                title = { Text("Xử lý đơn hàng", color = Color.White) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Black)
             )
         }
@@ -970,6 +972,10 @@ fun OrderSuccessScreen(
 
             Button(
                 onClick = {
+                    val intent = Intent(navController.context, MainActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    }
+                    navController.context.startActivity(intent)
                     (navController.context as? ComponentActivity)?.finish()
                 },
                 modifier = Modifier
