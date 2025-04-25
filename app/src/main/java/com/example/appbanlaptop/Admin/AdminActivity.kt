@@ -37,7 +37,6 @@ class AdminActivity : ComponentActivity() {
         super.onDestroy()
         UserManager.cleanup()
         CategoryManager.cleanup()
-        OrderManager.cleanup()
     }
 }
 
@@ -45,7 +44,7 @@ class AdminActivity : ComponentActivity() {
 @Composable
 fun AdminDashboard() {
     var selectedTab by remember { mutableStateOf(0) }
-    val tabs = listOf("Items", "Users", "Categories", "Revenue" , "Orders")
+    val tabs = listOf("Items", "Users", "Category", "Revenue" , "Orders")
     val context = LocalContext.current
 
     Scaffold(

@@ -1,5 +1,6 @@
 package com.example.appbanlaptop.Admin
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.appbanlaptop.Model.Order
+import com.example.appbanlaptop.Model.OrderItem
 import com.example.appbanlaptop.Model.OrderManager
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
@@ -27,7 +29,31 @@ import java.util.*
 @Composable
 fun AdminOrderScreen(modifier: Modifier = Modifier) {
     val orders by OrderManager.ordersFlow.collectAsState()
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+
+    // Gọi fetchAllOrders để đảm bảo dữ liệu được tải ban đầu
+    LaunchedEffect(Unit) {
+        OrderManager.fetchAllOrders(
+            onSuccess = { fetchedOrders ->
+                isLoading = false
+                Log.d("AdminOrderScreen", "Fetched ${fetchedOrders.size} orders")
+                Toast.makeText(context, "Đã tải ${fetchedOrders.size} đơn hàng", Toast.LENGTH_SHORT).show()
+            },
+            onError = { error ->
+                isLoading = false
+                errorMessage = error
+                Log.e("AdminOrderScreen", "Error fetching orders: $error")
+                Toast.makeText(context, "Lỗi khi tải đơn hàng: $error", Toast.LENGTH_LONG).show()
+            }
+        )
+    }
+
+    // Log khi danh sách đơn hàng thay đổi
+    LaunchedEffect(orders) {
+        Log.d("AdminOrderScreen", "UI received ${orders.size} orders")
+    }
 
     Scaffold(
         topBar = {
@@ -46,44 +72,97 @@ fun AdminOrderScreen(modifier: Modifier = Modifier) {
             )
         }
     ) { paddingValues ->
-        if (orders.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Chưa có đơn hàng nào",
-                    color = Color.Gray,
-                    fontSize = 16.sp
-                )
+        when {
+            isLoading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0xFFF5F5F5))
-                    .padding(paddingValues)
-            ) {
-                items(orders) { order ->
-                    AdminOrderItem(
-                        order = order,
-                        onStatusUpdate = { newStatus ->
-                            OrderManager.updateOrderStatus(
-                                userId = order.userId ?: return@AdminOrderItem,
-                                orderId = order.id ?: return@AdminOrderItem,
-                                newStatus = newStatus,
-                                onSuccess = {
-                                    Toast.makeText(context, "Cập nhật trạng thái thành công", Toast.LENGTH_SHORT).show()
-                                },
-                                onError = { error ->
-                                    Toast.makeText(context, "Lỗi: $error", Toast.LENGTH_SHORT).show()
+            errorMessage != null -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Lỗi: $errorMessage",
+                            color = Color.Red,
+                            fontSize = 16.sp
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = {
+                                isLoading = true
+                                errorMessage = null
+                                OrderManager.fetchAllOrders(
+                                    onSuccess = { fetchedOrders ->
+                                        isLoading = false
+                                        Toast.makeText(context, "Đã tải ${fetchedOrders.size} đơn hàng", Toast.LENGTH_SHORT).show()
+                                    },
+                                    onError = { error ->
+                                        isLoading = false
+                                        errorMessage = error
+                                        Toast.makeText(context, "Lỗi khi tải đơn hàng: $error", Toast.LENGTH_LONG).show()
+                                    }
+                                )
+                            }
+                        ) {
+                            Text("Thử lại")
+                        }
+                    }
+                }
+            }
+            orders.isEmpty() -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Chưa có đơn hàng nào",
+                        color = Color.Gray,
+                        fontSize = 16.sp
+                    )
+                }
+            }
+            else -> {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFFF5F5F5))
+                        .padding(paddingValues)
+                ) {
+                    items(orders) { order ->
+                        if (order.id != null && order.userId != null) {
+                            AdminOrderItem(
+                                order = order,
+                                onStatusUpdate = { newStatus ->
+                                    OrderManager.updateOrderStatus(
+                                        userId = order.userId,
+                                        orderId = order.id,
+                                        newStatus = newStatus,
+                                        onSuccess = {
+                                            Toast.makeText(context, "Cập nhật trạng thái thành công", Toast.LENGTH_SHORT).show()
+                                        },
+                                        onError = { error ->
+                                            Toast.makeText(context, "Lỗi: $error", Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
                                 }
                             )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        } else {
+                            Log.w("AdminOrderScreen", "Skipping order with null id or userId: $order")
                         }
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    }
                 }
             }
         }
@@ -93,6 +172,7 @@ fun AdminOrderScreen(modifier: Modifier = Modifier) {
 @Composable
 fun AdminOrderItem(order: Order, onStatusUpdate: (String) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
+    var showItems by remember { mutableStateOf(false) }
     val statusOptions = listOf("pending", "confirmed", "shipping", "delivered", "cancelled")
 
     Card(
@@ -141,8 +221,18 @@ fun AdminOrderItem(order: Order, onStatusUpdate: (String) -> Unit) {
             Text(
                 text = "${order.items?.size ?: 0} sản phẩm",
                 color = Color.Gray,
-                fontSize = 14.sp
+                fontSize = 14.sp,
+                modifier = Modifier.clickable { showItems = !showItems }
             )
+
+            // Hiển thị danh sách sản phẩm nếu showItems = true
+            if (showItems && !order.items.isNullOrEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                order.items.forEach { item ->
+                    OrderItemRow(item = item)
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -178,6 +268,35 @@ fun AdminOrderItem(order: Order, onStatusUpdate: (String) -> Unit) {
                 }
             }
         }
+    }
+}
+
+@Composable
+fun OrderItemRow(item: OrderItem) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFF0F0F0))
+            .padding(8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column {
+            Text(
+                text = "Tên: ${item.title ?: "N/A"}",
+                color = Color.Black,
+                fontSize = 14.sp
+            )
+            Text(
+                text = "Số lượng: ${item.quantity ?: 0}",
+                color = Color.Gray,
+                fontSize = 12.sp
+            )
+        }
+        Text(
+            text = "Giá: ${DecimalFormat("#,###").format(item.price ?: 0.0)}đ",
+            color = Color.Black,
+            fontSize = 14.sp
+        )
     }
 }
 
