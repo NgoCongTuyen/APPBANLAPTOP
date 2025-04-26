@@ -15,7 +15,8 @@ firebaseDatabaseKtx = "21.0.0"
 firebaseFirestoreKtx = "24.10.3" # Thêm Firestore nếu cần
 navigationCompose = "2.8.9"
 roomKtx = "2.6.1"
-coilCompose = "2.0.0" # Thêm Coil để tải ảnh
+coilCompose = "2.0.0"
+
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -39,7 +40,7 @@ firebase-database-ktx = { group = "com.google.firebase", name = "firebase-databa
 firebase-firestore-ktx = { group = "com.google.firebase", name = "firebase-firestore-ktx", version.ref = "firebaseFirestoreKtx" } # Thêm Firestore
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "roomKtx" }
-coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coilCompose" } # Thêm Coil
+coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coilCompose" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

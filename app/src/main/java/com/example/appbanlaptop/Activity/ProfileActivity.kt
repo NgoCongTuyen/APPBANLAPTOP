@@ -1,5 +1,6 @@
 package com.example.appbanlaptop.Activity
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -24,7 +25,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.appbanlaptop.R
-//import com.example.appbanlaptop.cart.CartScreenActivity
 import com.example.appbanlaptop.ui.theme.APPBANLAPTOPTheme
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
@@ -36,12 +36,39 @@ import com.google.firebase.database.ValueEventListener
 import java.text.SimpleDateFormat
 import java.util.Date
 
+// Theme Manager to handle app-wide theme state
+object ThemeManager {
+    private const val PREFS_NAME = "AppPreferences"
+    private const val KEY_DARK_MODE = "isDarkMode"
+
+    fun isDarkMode(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(KEY_DARK_MODE, false)
+    }
+
+    fun setDarkMode(context: Context, isDarkMode: Boolean) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        with(prefs.edit()) {
+            putBoolean(KEY_DARK_MODE, isDarkMode)
+            apply()
+        }
+    }
+}
+
 class ProfileActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
-            APPBANLAPTOPTheme {
+            // Load theme from ThemeManager
+            val isDarkMode = remember { mutableStateOf(ThemeManager.isDarkMode(this)) }
+
+            // Update SharedPreferences when theme changes
+            LaunchedEffect(isDarkMode.value) {
+                ThemeManager.setDarkMode(this@ProfileActivity, isDarkMode.value)
+            }
+
+            APPBANLAPTOPTheme(darkTheme = isDarkMode.value) {
                 ProfileScreen(
                     onLogoutClicked = {
                         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -58,8 +85,10 @@ class ProfileActivity : ComponentActivity() {
                         }
                     },
                     onBackClick = {
-                        finish() // Quay về activity trước trong stack
-                    }
+                        finish()
+                    },
+                    isDarkMode = isDarkMode.value,
+                    onThemeToggle = { isDarkMode.value = !isDarkMode.value }
                 )
             }
         }
@@ -68,7 +97,12 @@ class ProfileActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileScreen(onLogoutClicked: () -> Unit, onBackClick: () -> Unit = {}) {
+fun ProfileScreen(
+    onLogoutClicked: () -> Unit,
+    onBackClick: () -> Unit = {},
+    isDarkMode: Boolean,
+    onThemeToggle: () -> Unit
+) {
     val currentUser = FirebaseAuth.getInstance().currentUser
     val email = currentUser?.email ?: "No email"
     val photoUrl = currentUser?.photoUrl?.toString()
@@ -112,7 +146,7 @@ fun ProfileScreen(onLogoutClicked: () -> Unit, onBackClick: () -> Unit = {}) {
                         Text(
                             text = " Profile",
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black
+                            color = if (isDarkMode) Color.White else Color.Black
                         )
                     }
                 },
@@ -126,7 +160,9 @@ fun ProfileScreen(onLogoutClicked: () -> Unit, onBackClick: () -> Unit = {}) {
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = if (isDarkMode) Color(0xFF121212) else Color.White
+                )
             )
         },
         bottomBar = {
@@ -136,7 +172,7 @@ fun ProfileScreen(onLogoutClicked: () -> Unit, onBackClick: () -> Unit = {}) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF5F5F5))
+                .background(if (isDarkMode) Color(0xFF121212) else Color(0xFFF5F5F5))
                 .padding(24.dp)
                 .padding(paddingValues),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -149,7 +185,9 @@ fun ProfileScreen(onLogoutClicked: () -> Unit, onBackClick: () -> Unit = {}) {
                         .wrapContentHeight()
                         .shadow(8.dp, shape = RoundedCornerShape(16.dp)),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isDarkMode) Color(0xFF1E1E1E) else Color.White
+                    )
                 ) {
                     Column(
                         modifier = Modifier
@@ -164,7 +202,7 @@ fun ProfileScreen(onLogoutClicked: () -> Unit, onBackClick: () -> Unit = {}) {
                                 modifier = Modifier
                                     .size(100.dp)
                                     .clip(CircleShape)
-                                    .background(Color.LightGray)
+                                    .background(if (isDarkMode) Color.DarkGray else Color.LightGray)
                             )
                         } else {
                             Image(
@@ -173,7 +211,7 @@ fun ProfileScreen(onLogoutClicked: () -> Unit, onBackClick: () -> Unit = {}) {
                                 modifier = Modifier
                                     .size(100.dp)
                                     .clip(CircleShape)
-                                    .background(Color.LightGray)
+                                    .background(if (isDarkMode) Color.DarkGray else Color.LightGray)
                             )
                         }
                         Spacer(modifier = Modifier.height(16.dp))
@@ -181,7 +219,7 @@ fun ProfileScreen(onLogoutClicked: () -> Unit, onBackClick: () -> Unit = {}) {
                             text = username.value,
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black,
+                            color = if (isDarkMode) Color.White else Color.Black,
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -189,7 +227,7 @@ fun ProfileScreen(onLogoutClicked: () -> Unit, onBackClick: () -> Unit = {}) {
                             text = email,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Medium,
-                            color = Color.Gray,
+                            color = if (isDarkMode) Color.LightGray else Color.Gray,
                             textAlign = TextAlign.Center
                         )
                     }
@@ -204,7 +242,9 @@ fun ProfileScreen(onLogoutClicked: () -> Unit, onBackClick: () -> Unit = {}) {
                         .wrapContentHeight()
                         .shadow(8.dp, shape = RoundedCornerShape(16.dp)),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isDarkMode) Color(0xFF1E1E1E) else Color.White
+                    )
                 ) {
                     Column(
                         modifier = Modifier
@@ -216,7 +256,7 @@ fun ProfileScreen(onLogoutClicked: () -> Unit, onBackClick: () -> Unit = {}) {
                             text = "Account Details",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black
+                            color = if (isDarkMode) Color.White else Color.Black
                         )
                         Spacer(modifier = Modifier.height(8.dp))
 
@@ -224,25 +264,25 @@ fun ProfileScreen(onLogoutClicked: () -> Unit, onBackClick: () -> Unit = {}) {
                             Text(
                                 text = "Joined: ${SimpleDateFormat("dd/MM/yyyy").format(Date(timestamp))}",
                                 fontSize = 16.sp,
-                                color = Color.Gray
+                                color = if (isDarkMode) Color.LightGray else Color.Gray
                             )
                         } ?: Text(
                             text = "Joined: Loading...",
                             fontSize = 16.sp,
-                            color = Color.Gray
+                            color = if (isDarkMode) Color.LightGray else Color.Gray
                         )
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
                             text = "Total Orders: 5",
                             fontSize = 16.sp,
-                            color = Color.Gray
+                            color = if (isDarkMode) Color.LightGray else Color.Gray
                         )
                     }
                 }
             }
 
-            // Card 3: Cài đặt (giả lập)
+            // Card 3: Cài đặt (bao gồm nút chuyển dark/light mode)
             item {
                 Card(
                     modifier = Modifier
@@ -250,7 +290,9 @@ fun ProfileScreen(onLogoutClicked: () -> Unit, onBackClick: () -> Unit = {}) {
                         .wrapContentHeight()
                         .shadow(8.dp, shape = RoundedCornerShape(16.dp)),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isDarkMode) Color(0xFF1E1E1E) else Color.White
+                    )
                 ) {
                     Column(
                         modifier = Modifier
@@ -262,22 +304,38 @@ fun ProfileScreen(onLogoutClicked: () -> Unit, onBackClick: () -> Unit = {}) {
                             text = "Settings",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black
+                            color = if (isDarkMode) Color.White else Color.Black
                         )
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
                             text = "Notifications: Enabled",
                             fontSize = 16.sp,
-                            color = Color.Gray
+                            color = if (isDarkMode) Color.LightGray else Color.Gray
                         )
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        Text(
-                            text = "Dark Mode: Disabled",
-                            fontSize = 16.sp,
-                            color = Color.Gray
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Dark Mode",
+                                fontSize = 16.sp,
+                                color = if (isDarkMode) Color.LightGray else Color.Gray
+                            )
+                            Switch(
+                                checked = isDarkMode,
+                                onCheckedChange = { onThemeToggle() },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.White,
+                                    checkedTrackColor = Color(0xFF6200EE),
+                                    uncheckedThumbColor = Color.White,
+                                    uncheckedTrackColor = Color.Gray
+                                )
+                            )
+                        }
                     }
                 }
             }
@@ -290,7 +348,9 @@ fun ProfileScreen(onLogoutClicked: () -> Unit, onBackClick: () -> Unit = {}) {
                         .wrapContentHeight()
                         .shadow(8.dp, shape = RoundedCornerShape(16.dp)),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isDarkMode) Color(0xFF1E1E1E) else Color.White
+                    )
                 ) {
                     Column(
                         modifier = Modifier
