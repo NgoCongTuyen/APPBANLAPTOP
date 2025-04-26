@@ -1,5 +1,6 @@
 package com.example.appbanlaptop.payment
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -39,6 +40,7 @@ import androidx.room.util.copy
 import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
+import com.example.appbanlaptop.MainActivity
 import com.example.appbanlaptop.Model.CartItem
 import com.example.appbanlaptop.R
 import com.google.firebase.auth.FirebaseAuth
@@ -88,8 +90,7 @@ class PaymentActivity : ComponentActivity() {
                         OrderSuccessScreen(
                             navController = navController,
                             products = checkoutItems,
-                            totalPrice = totalPrice,
-                            address = AddressState.addresses.firstOrNull { it.isDefault }
+                            totalPrice = totalPrice
                         )
                     }
                 }
@@ -778,8 +779,14 @@ fun TotalAndCheckoutButton(
                     return@Button
                 }
 
+                // Tạo ID đơn hàng ngắn
+                val timestamp = System.currentTimeMillis()
+                val random = (Math.random() * 1000).toInt()
+                val orderId = "${timestamp.toString().takeLast(6)}${random.toString().padStart(3, '0')}"
+
                 // Tạo dữ liệu đơn hàng
                 val order = mapOf(
+                    "orderId" to orderId,
                     "address" to mapOf(
                         "name" to selectedAddress.name,
                         "phone" to selectedAddress.phone,
@@ -797,13 +804,13 @@ fun TotalAndCheckoutButton(
                     },
                     "totalPrice" to totalPrice,
                     "status" to "pending",
-                    "createdAt" to System.currentTimeMillis()
+                    "createdAt" to timestamp
                 )
 
                 // Lưu vào Realtime Database
                 val database = FirebaseDatabase.getInstance()
                 val ordersRef = database.getReference("orders").child(userId)
-                val newOrderRef = ordersRef.push() // Tạo ID duy nhất cho đơn hàng
+                val newOrderRef = ordersRef.child(orderId) // Sử dụng orderId làm key
 
                 newOrderRef.setValue(order)
                     .addOnSuccessListener {
@@ -847,13 +854,44 @@ fun TotalAndCheckoutButton(
 fun OrderSuccessScreen(
     navController: NavController,
     products: List<CartItem>,
-    totalPrice: Double,
-    address: Address?
+    totalPrice: Double
 ) {
+    var orderAddress by remember { mutableStateOf<Address?>(null) }
+
+    // Truy xuất đơn hàng mới nhất từ Firebase
+    LaunchedEffect(Unit) {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+        if (userId != null) {
+            val database = FirebaseDatabase.getInstance()
+            val ordersRef = database.getReference("orders").child(userId)
+            ordersRef.orderByChild("createdAt").limitToLast(1)
+                .addListenerForSingleValueEvent(object : ValueEventListener {
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        for (orderSnapshot in snapshot.children) {
+                            val addressMap = orderSnapshot.child("address").value as? Map<String, Any>
+                            addressMap?.let {
+                                orderAddress = Address(
+                                    name = it["name"] as? String ?: "",
+                                    phone = it["phone"] as? String ?: "",
+                                    addressDetail = it["addressDetail"] as? String ?: "",
+                                    isDefault = it["isDefault"] as? Boolean ?: false
+                                )
+                                Log.d("OrderSuccessScreen", "Fetched address from Firebase: $orderAddress")
+                            }
+                        }
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
+                        Log.e("OrderSuccessScreen", "Error fetching order: ${error.message}")
+                    }
+                })
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Đặt hàng thành công", color = Color.White) },
+                title = { Text("Xử lý đơn hàng", color = Color.White) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Black)
             )
         }
@@ -902,7 +940,7 @@ fun OrderSuccessScreen(
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
 
-                    address?.let {
+                    orderAddress?.let {
                         Text(
                             text = "Địa chỉ giao hàng:",
                             color = Color(0xFFAAAAAA),
@@ -914,7 +952,12 @@ fun OrderSuccessScreen(
                             fontSize = 14.sp,
                             modifier = Modifier.padding(bottom = 16.dp)
                         )
-                    }
+                    } ?: Text(
+                        text = "Đang tải địa chỉ giao hàng...",
+                        color = Color(0xFFAAAAAA),
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
 
                     Text(
                         text = "Sản phẩm:",
@@ -970,6 +1013,10 @@ fun OrderSuccessScreen(
 
             Button(
                 onClick = {
+                    val intent = Intent(navController.context, MainActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    }
+                    navController.context.startActivity(intent)
                     (navController.context as? ComponentActivity)?.finish()
                 },
                 modifier = Modifier

@@ -39,24 +39,33 @@ import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.parcelize.Parcelize
 
+// Extension function để rút gọn orderId
+fun String.shortenOrderId(maxLength: Int = 8): String {
+    return if (this.length <= maxLength) {
+        this
+    } else {
+        "${this.take(maxLength)}..."
+    }
+}
+
 // Data class để lưu thông tin đơn hàng
 @Parcelize
 data class Order(
     val orderId: String,
     val orderDate: Date,
     val items: List<OrderItem>,
-    val totalAmount: Double, // Đây là tổng tiền từ database, có thể bao gồm phí bổ sung
+    val totalAmount: Double,
     val status: OrderStatus,
     val shippingAddress: String,
-    val recipientName: String, // Tên người nhận
-    val recipientPhone: String // Số điện thoại người nhận
+    val recipientName: String,
+    val recipientPhone: String
 ) : android.os.Parcelable {
     companion object {
         fun fromMap(orderId: String, map: Map<String, Any>): Order {
             val addressMap = map["address"] as? Map<String, Any> ?: emptyMap()
             val productsList = map["products"] as? List<Map<String, Any>> ?: emptyList()
             val createdAt = (map["createdAt"] as? Long) ?: 0L
-            val totalPrice = (map["totalPrice"] as? Number)?.toDouble() ?: 0.0 // Xử lý cả Long và Double
+            val totalPrice = (map["totalPrice"] as? Number)?.toDouble() ?: 0.0
             val statusString = map["status"] as? String ?: "pending"
 
             val items = productsList.map { productMap ->
@@ -64,19 +73,18 @@ data class Order(
                     productName = productMap["name"] as? String ?: "Unknown Item",
                     quantity = (productMap["quantity"] as? Long)?.toInt() ?: 1,
                     price = (productMap["price"] as? String)?.toDoubleOrNull()
-                        ?: (productMap["price"] as? Number)?.toDouble() ?: 0.0, // Xử lý cả String và Number
+                        ?: (productMap["price"] as? Number)?.toDouble() ?: 0.0,
                     imageUrl = productMap["imageUrl"] as? String
                 )
             }
 
-            // Tính lại tổng tiền của các sản phẩm (không bao gồm phí bổ sung)
             val itemsTotal = items.sumOf { it.price * it.quantity }
 
             return Order(
                 orderId = orderId,
                 orderDate = Date(createdAt),
                 items = items,
-                totalAmount = totalPrice, // Lưu tổng tiền từ database
+                totalAmount = totalPrice,
                 status = OrderStatus.valueOf(statusString.uppercase()),
                 shippingAddress = addressMap["addressDetail"] as? String ?: "Unknown Address",
                 recipientName = addressMap["name"] as? String ?: "Unknown Name",
@@ -85,11 +93,9 @@ data class Order(
         }
     }
 
-    // Tính tổng tiền của các sản phẩm (không bao gồm phí bổ sung)
     val itemsTotal: Double
         get() = items.sumOf { it.price * it.quantity }
 
-    // Kiểm tra xem có phí bổ sung không (phí vận chuyển, thuế, v.v.)
     val additionalFee: Double
         get() = totalAmount - itemsTotal
 }
@@ -115,7 +121,6 @@ class OrderActivity : ComponentActivity() {
             val orders = remember { mutableStateListOf<Order>() }
             val userId = FirebaseAuth.getInstance().currentUser?.uid
 
-            // Lấy dữ liệu đơn hàng từ Firebase Realtime Database
             LaunchedEffect(userId) {
                 if (userId == null) {
                     Toast.makeText(this@OrderActivity, "Vui lòng đăng nhập để xem đơn hàng", Toast.LENGTH_SHORT).show()
@@ -138,7 +143,6 @@ class OrderActivity : ComponentActivity() {
                                 Log.e("OrderActivity", "Error parsing order $orderId: ${e.message}", e)
                             }
                         }
-                        // Sắp xếp theo ngày đặt hàng (mới nhất trước)
                         orders.clear()
                         orders.addAll(orderList.sortedByDescending { it.orderDate })
                         Log.d("OrderActivity", "Loaded orders: $orders")
@@ -270,7 +274,7 @@ fun OrderItem(order: Order, onClick: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Đơn hàng #${order.orderId}",
+                    text = "Đơn hàng #${order.orderId.shortenOrderId()}",
                     fontWeight = FontWeight.Bold,
                     color = Color.Black
                 )
@@ -295,7 +299,6 @@ fun OrderItem(order: Order, onClick: () -> Unit) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Hiển thị tổng tiền dựa trên itemsTotal
             Text(
                 text = "Tổng tiền: ${DecimalFormat("#,###").format(order.itemsTotal)}đ",
                 color = Color(0xFFFF0000),
@@ -379,7 +382,7 @@ fun OrderDetailScreen(order: Order, onBackClick: () -> Unit) {
                     ) {
                         // Thông tin đơn hàng
                         Text(
-                            text = "Đơn hàng #${order.orderId}",
+                            text = "Đơn hàng #${order.orderId}", // Bỏ shortenOrderId() để hiển thị toàn bộ ID
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
                             color = Color.Black
@@ -489,7 +492,6 @@ fun OrderDetailScreen(order: Order, onBackClick: () -> Unit) {
                             )
                         }
 
-                        // Nếu có phí bổ sung (phí vận chuyển, thuế, v.v.), hiển thị riêng
                         if (order.additionalFee > 0) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Row(
@@ -513,7 +515,6 @@ fun OrderDetailScreen(order: Order, onBackClick: () -> Unit) {
                         Divider(color = Color(0xFFEEEEEE))
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Tổng tiền cuối cùng (bao gồm phí bổ sung nếu có)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
