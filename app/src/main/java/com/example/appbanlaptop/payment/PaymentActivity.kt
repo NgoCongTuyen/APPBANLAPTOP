@@ -159,7 +159,6 @@ fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, t
                 title = {
                     Text(
                         text = "Payment",
-                        color = Color.White,
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp
                     )
@@ -171,13 +170,13 @@ fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, t
                         Icon(
                             imageVector = Icons.Default.ArrowBackIosNew,
                             contentDescription = "Back",
-                            tint = Color.Blue,
+                            tint = Color.Unspecified,
                             modifier = Modifier.size(24.dp)
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Black
+                    containerColor = Color.White
                 )
             )
         },
@@ -256,6 +255,7 @@ fun ShippingInfo(selectedAddress: Address?, onAddressClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .background(Color.White)
             .padding(bottom = 8.dp)
     ) {
         TextField(
@@ -263,7 +263,7 @@ fun ShippingInfo(selectedAddress: Address?, onAddressClick: () -> Unit) {
             onValueChange = { /* Không cho chỉnh sửa trực tiếp */ },
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF1C2526), RoundedCornerShape(8.dp))
+                .background(Color.White, RoundedCornerShape(8.dp))
                 .clickable { onAddressClick() },
             textStyle = LocalTextStyle.current.copy(color = Color.White, fontSize = 14.sp),
             enabled = false,

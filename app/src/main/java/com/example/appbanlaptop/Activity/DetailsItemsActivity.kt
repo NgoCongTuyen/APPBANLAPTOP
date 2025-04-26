@@ -33,6 +33,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.appbanlaptop.Activity.BottomActivity.BottomMenu
+import com.example.appbanlaptop.cart.CartScreenActivity
 import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
@@ -152,6 +154,7 @@ fun DetailsItemsScreen(
     onAddToCartClick: () -> Unit,
     onBuyNowClick: () -> Unit
 ) {
+    val context = LocalContext.current
     Scaffold(
         topBar = {
             TopAppBar(
@@ -178,7 +181,14 @@ fun DetailsItemsScreen(
                 contentColor = Color.White
             )
         },
-        
+        bottomBar = {
+            BottomMenu(
+                onItemClick = {
+                    // Điều hướng đến CartScreenActivity
+                    context.startActivity(Intent(context, CartScreenActivity::class.java))
+                }
+            )
+        }
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier

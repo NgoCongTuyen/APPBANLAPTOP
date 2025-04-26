@@ -18,12 +18,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.appbanlaptop.Activity.BottomActivity.BottomMenu
+import com.example.appbanlaptop.R
+import com.example.appbanlaptop.cart.CartScreenActivity
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -148,9 +153,13 @@ class OrderActivity : ComponentActivity() {
 
             NavHost(navController = navController, startDestination = "order_list") {
                 composable("order_list") {
-                    OrderListScreen(orders = orders) { order ->
-                        navController.navigate("order_detail/${order.orderId}")
-                    }
+                    OrderListScreen(
+                        orders = orders,
+                        onOrderClick = { order ->
+                            navController.navigate("order_detail/${order.orderId}")
+                        },
+                        onBackClick = { finish() } // Đóng Activity khi nhấn Back
+                    )
                 }
                 composable("order_detail/{orderId}") { backStackEntry ->
                     val orderId = backStackEntry.arguments?.getString("orderId")
@@ -172,7 +181,12 @@ class OrderActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun OrderListScreen(orders: List<Order>, onOrderClick: (Order) -> Unit) {
+fun OrderListScreen(
+    orders: List<Order>,
+    onOrderClick: (Order) -> Unit,
+    onBackClick: () -> Unit
+) {
+    val context = LocalContext.current
     Scaffold(
         topBar = {
             TopAppBar(
@@ -184,9 +198,27 @@ fun OrderListScreen(orders: List<Order>, onOrderClick: (Order) -> Unit) {
                         fontSize = 20.sp
                     )
                 },
+                navigationIcon = {
+                    androidx.compose.material.IconButton(onClick = onBackClick) {
+                        androidx.compose.material.Icon(
+                            painter = painterResource(R.drawable.back),
+                            contentDescription = "Back",
+                            modifier = Modifier.size(40.dp),
+                            tint = Color.Unspecified
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.White
                 )
+            )
+        },
+        bottomBar = {
+            BottomMenu(
+                onItemClick = {
+                    // Điều hướng đến CartScreenActivity
+                    context.startActivity(Intent(context, CartScreenActivity::class.java))
+                }
             )
         }
     ) { paddingValues ->

@@ -34,6 +34,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -170,7 +171,25 @@ fun MainActivityScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    Box(
+                        modifier = Modifier
+                            .weight(2f),
+//                            .fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            painter = painterResource(R.drawable.logo),
+                            contentDescription = "Logo",
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(Color.White)
+                        )
+                    }
+                    Column (
+                        modifier = Modifier
+                            .weight(4f)
+                    ) {
                         Text(text = "Welcome Back", fontSize = 16.sp, color = Color.Gray)
                         Text(
                             text = username,
@@ -179,11 +198,15 @@ fun MainActivityScreen(
                             color = Color.Black
                         )
                     }
-                    Row {
+                    Row (
+                        modifier = Modifier
+                            .weight(1f)
+                    ){
                         Image(
                             painter = painterResource(R.drawable.search_icon),
                             contentDescription = "Search",
                             modifier = Modifier
+                                .weight(1f)
                                 .size(36.dp)
                                 .clickable { showSearchBar = !showSearchBar }
                         )
@@ -206,7 +229,9 @@ fun MainActivityScreen(
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
+                            .padding(16.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(MaterialTheme.colorScheme.surface),
                         placeholder = { Text("Tìm kiếm sản phẩm...") },
                         leadingIcon = {
                             Icon(
@@ -282,9 +307,9 @@ fun MainActivityScreen(
             }
 
             item { AutoSlidingCarousel() }
-            item { SectionTitle("Categories", "See All") }
+            item { SectionTitle("Categories") }
             item { CategoryList(categories, context) }
-            item { SectionTitle("Recommended Products", "See All") }
+            item { SectionTitle("Recommended Products") }
             if (isLoadingItems) {
                 item {
                     CircularProgressIndicator(
@@ -468,7 +493,7 @@ fun CategoryItem(
 }
 
 @Composable
-fun SectionTitle(title: String, actionText: String) {
+fun SectionTitle(title: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -482,12 +507,7 @@ fun SectionTitle(title: String, actionText: String) {
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold
         )
-        Text(
-            text = actionText,
-            color = Color(0xFF6200EE),
-            fontSize = 16.sp,
-            modifier = Modifier.clickable { /* TODO: Handle See All */ }
-        )
+
     }
 }
 
