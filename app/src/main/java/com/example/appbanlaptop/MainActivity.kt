@@ -71,11 +71,13 @@ import com.example.appbanlaptop.Activity.BottomActivity.BottomMenu
 import com.example.appbanlaptop.Activity.DetailsItemsActivity
 import com.example.appbanlaptop.Activity.ListItemActivity
 import com.example.appbanlaptop.Activity.ProfileActivity
+import com.example.appbanlaptop.Activity.ThemeManager
 
 
 import com.example.appbanlaptop.Model.ProductItem
 import com.example.appbanlaptop.ViewModel.MainViewModel
 import com.example.appbanlaptop.cart.CartScreenActivity
+import com.example.appbanlaptop.ui.theme.PaymentTheme
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.rememberPagerState
@@ -97,16 +99,19 @@ class MainActivity : ComponentActivity() {
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
 
         setContent {
-            MainActivityScreen(
-                productItems = viewModel.productItems,
-                categories = viewModel.categories,
-                onCartClick = {
-                    val intent = Intent(this, CartScreenActivity::class.java)
-                    startActivity(intent)
-                },
-                username = username,
-                isLoadingItems = viewModel.isLoadingItems // Truyền trạng thái tải
-            )
+            val isDarkMode = ThemeManager.isDarkMode(this)
+            PaymentTheme(darkTheme = isDarkMode) {
+                MainActivityScreen(
+                    productItems = viewModel.productItems,
+                    categories = viewModel.categories,
+                    onCartClick = {
+                        val intent = Intent(this, CartScreenActivity::class.java)
+                        startActivity(intent)
+                    },
+                    username = username,
+                    isLoadingItems = viewModel.isLoadingItems // Truyền trạng thái tải
+                )
+            }
         }
     }
 }

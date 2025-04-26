@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -42,6 +43,8 @@ import com.example.appbanlaptop.Activity.BottomActivity
 import com.example.appbanlaptop.payment.PaymentActivity
 import java.text.NumberFormat
 import java.util.Locale
+import com.example.appbanlaptop.Activity.ThemeManager
+import com.example.appbanlaptop.ui.theme.APPBANLAPTOPTheme
 
 class CartScreenActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,10 +60,23 @@ class CartScreenActivity : ComponentActivity() {
         CartManager.setUserId(currentUser.uid)
 
         setContent {
-            CartScreen(
-                navController = null,
-                onBackClick = { finish() }
-            )
+            val isDarkMode = remember { mutableStateOf(ThemeManager.isDarkMode(this)) }
+            
+            // Cập nhật theme khi có thay đổi
+            LaunchedEffect(Unit) {
+                ThemeManager.isDarkMode(this@CartScreenActivity).let { darkMode ->
+                    if (darkMode != isDarkMode.value) {
+                        isDarkMode.value = darkMode
+                    }
+                }
+            }
+
+            APPBANLAPTOPTheme(darkTheme = isDarkMode.value) {
+                CartScreen(
+                    navController = null,
+                    onBackClick = { finish() }
+                )
+            }
         }
     }
 
@@ -117,7 +133,7 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.icon_cart),
+                            imageVector = Icons.Default.ShoppingCart,
                             contentDescription = "Cart Icon",
                             modifier = Modifier.size(40.dp),
                             tint = Color.Unspecified
@@ -126,7 +142,7 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
                         Text(
                             text = "Cart",
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black
+                            color = MaterialTheme.colorScheme.onBackground
                         )
                     }
                 },
@@ -141,7 +157,7 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.background
                 )
             )
         },
@@ -155,14 +171,14 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color(0xFFF6F6F6))
+                        .background(MaterialTheme.colorScheme.background)
                         .padding(paddingValues),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "Giỏ hàng của bạn đang trống",
                         fontSize = 18.sp,
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onBackground,
                         textAlign = TextAlign.Center
                     )
                 }
@@ -170,7 +186,7 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color(0xFFF6F6F6))
+                        .background(MaterialTheme.colorScheme.background)
                         .padding(paddingValues)
                 ) {
                     // Thêm checkbox chọn tất cả
@@ -219,7 +235,7 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
                                     text = "Total: $formattedTotal",
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF4A6FF0)
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                             }
                         }
@@ -283,7 +299,7 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
                                 .padding(16.dp)
                                 .height(48.dp)
                                 .zIndex(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4A6FF0)),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                             enabled = cartItems.any { it.isSelected }.also {
                                 Log.d("CartScreen", "Check Out button enabled: $it, selected items: ${cartItems.filter { it.isSelected }}")
                             }
@@ -291,7 +307,7 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
                             val formattedTotal = numberFormat.format(selectedItemsTotal)
                             Text(
                                 text = "Check Out ($formattedTotal)",
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onPrimary,
                                 fontSize = 16.sp
                             )
                         }
@@ -365,20 +381,20 @@ fun CartItemCard(
                     Text(
                         text = "Đang tải...",
                         fontSize = 12.sp,
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                         modifier = Modifier
                             .align(Alignment.CenterVertically)
-                            .background(Color.White.copy(alpha = 0.7f))
+                            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.7f))
                             .padding(2.dp)
                     )
                 } else if (isImageError) {
                     Text(
                         text = "Lỗi",
                         fontSize = 12.sp,
-                        color = Color.Red,
+                        color = MaterialTheme.colorScheme.error,
                         modifier = Modifier
                             .align(Alignment.CenterVertically)
-                            .background(Color.White.copy(alpha = 0.7f))
+                            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.7f))
                             .padding(2.dp)
                     )
                 }
@@ -418,7 +434,7 @@ fun CartItemCard(
                         text = formattedPrice,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
-                        color = Color.Red,
+                        color = MaterialTheme.colorScheme.primary,
                         maxLines = 1
                     )
 
@@ -486,7 +502,7 @@ fun CartItemCard(
                 Icon(
                     imageVector = Icons.Default.Delete,
                     contentDescription = "Delete",
-                    tint = Color.Red
+                    tint = MaterialTheme.colorScheme.error
                 )
             }
         }

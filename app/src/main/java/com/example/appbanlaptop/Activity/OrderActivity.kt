@@ -29,6 +29,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.appbanlaptop.Activity.BottomActivity.BottomMenu
 import com.example.appbanlaptop.R
 import com.example.appbanlaptop.cart.CartScreenActivity
+import com.example.appbanlaptop.ui.theme.APPBANLAPTOPTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -113,73 +114,79 @@ enum class OrderStatus {
 }
 
 class OrderActivity : ComponentActivity() {
+    private var isDarkMode = mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        isDarkMode.value = ThemeManager.isDarkMode(this)
 
         setContent {
-            val navController = rememberNavController()
-            val orders = remember { mutableStateListOf<Order>() }
-            val userId = FirebaseAuth.getInstance().currentUser?.uid
+            APPBANLAPTOPTheme(darkTheme = isDarkMode.value) {
+                val navController = rememberNavController()
+                val orders = remember { mutableStateListOf<Order>() }
+                val userId = FirebaseAuth.getInstance().currentUser?.uid
 
-            LaunchedEffect(userId) {
-                if (userId == null) {
-                    Toast.makeText(this@OrderActivity, "Vui lòng đăng nhập để xem đơn hàng", Toast.LENGTH_SHORT).show()
-                    return@LaunchedEffect
-                }
+                LaunchedEffect(userId) {
+                    if (userId == null) {
+                        Toast.makeText(this@OrderActivity, "Vui lòng đăng nhập để xem đơn hàng", Toast.LENGTH_SHORT).show()
+                        return@LaunchedEffect
+                    }
 
-                val database = FirebaseDatabase.getInstance()
-                val ordersRef = database.getReference("orders").child(userId)
-
-                ordersRef.addValueEventListener(object : ValueEventListener {
-                    override fun onDataChange(snapshot: DataSnapshot) {
-                        val orderList = mutableListOf<Order>()
-                        for (orderSnapshot in snapshot.children) {
-                            val orderId = orderSnapshot.key ?: continue
-                            val orderMap = orderSnapshot.value as? Map<String, Any> ?: continue
-                            try {
-                                val order = Order.fromMap(orderId, orderMap)
-                                orderList.add(order)
-                            } catch (e: Exception) {
-                                Log.e("OrderActivity", "Error parsing order $orderId: ${e.message}", e)
+                    val database = FirebaseDatabase.getInstance()
+                    val ordersRef = database.getReference("orders").child(userId)
+                    ordersRef.addValueEventListener(object : ValueEventListener {
+                        override fun onDataChange(snapshot: DataSnapshot) {
+                            orders.clear()
+                            for (orderSnapshot in snapshot.children) {
+                                try {
+                                    val orderId = orderSnapshot.key ?: continue
+                                    val orderMap = orderSnapshot.value as? Map<String, Any> ?: continue
+                                    val order = Order.fromMap(orderId, orderMap)
+                                    orders.add(order)
+                                } catch (e: Exception) {
+                                    Log.e("OrderActivity", "Error parsing order: ${e.message}")
+                                }
                             }
+                            orders.sortByDescending { it.orderDate }
                         }
-                        orders.clear()
-                        orders.addAll(orderList.sortedByDescending { it.orderDate })
-                        Log.d("OrderActivity", "Loaded orders: $orders")
-                    }
 
-                    override fun onCancelled(error: DatabaseError) {
-                        Log.e("OrderActivity", "Error loading orders: ${error.message}", error.toException())
-                        Toast.makeText(this@OrderActivity, "Lỗi khi tải đơn hàng: ${error.message}", Toast.LENGTH_SHORT).show()
-                    }
-                })
-            }
-
-            NavHost(navController = navController, startDestination = "order_list") {
-                composable("order_list") {
-                    OrderListScreen(
-                        orders = orders,
-                        onOrderClick = { order ->
-                            navController.navigate("order_detail/${order.orderId}")
-                        },
-                        onBackClick = { finish() } // Đóng Activity khi nhấn Back
-                    )
+                        override fun onCancelled(error: DatabaseError) {
+                            Log.e("OrderActivity", "Database error: ${error.message}")
+                        }
+                    })
                 }
-                composable("order_detail/{orderId}") { backStackEntry ->
-                    val orderId = backStackEntry.arguments?.getString("orderId")
-                    val order = orders.find { it.orderId == orderId }
-                    if (order != null) {
-                        OrderDetailScreen(order = order, onBackClick = {
+
+                NavHost(navController = navController, startDestination = "order_list") {
+                    composable("order_list") {
+                        OrderListScreen(
+                            orders = orders,
+                            onOrderClick = { order ->
+                                navController.navigate("order_detail/${order.orderId}")
+                            },
+                            onBackClick = { finish() }
+                        )
+                    }
+                    composable("order_detail/{orderId}") { backStackEntry ->
+                        val orderId = backStackEntry.arguments?.getString("orderId")
+                        val order = orders.find { it.orderId == orderId }
+                        if (order != null) {
+                            OrderDetailScreen(order = order, onBackClick = {
+                                navController.popBackStack()
+                            })
+                        } else {
+                            Log.e("OrderActivity", "Order with ID $orderId not found")
+                            Toast.makeText(this@OrderActivity, "Không tìm thấy đơn hàng", Toast.LENGTH_SHORT).show()
                             navController.popBackStack()
-                        })
-                    } else {
-                        Log.e("OrderActivity", "Order with ID $orderId not found")
-                        Toast.makeText(this@OrderActivity, "Không tìm thấy đơn hàng", Toast.LENGTH_SHORT).show()
-                        navController.popBackStack()
+                        }
                     }
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        isDarkMode.value = ThemeManager.isDarkMode(this)
     }
 }
 
@@ -197,14 +204,14 @@ fun OrderListScreen(
                 title = {
                     Text(
                         text = "Đơn hàng của tôi",
-                        color = Color.Black,
+                        color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp
                     )
                 },
                 navigationIcon = {
-                    androidx.compose.material.IconButton(onClick = onBackClick) {
-                        androidx.compose.material.Icon(
+                    IconButton(onClick = onBackClick) {
+                        Icon(
                             painter = painterResource(R.drawable.back),
                             contentDescription = "Back",
                             modifier = Modifier.size(40.dp),
@@ -213,14 +220,13 @@ fun OrderListScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.background
                 )
             )
         },
         bottomBar = {
             BottomMenu(
                 onItemClick = {
-                    // Điều hướng đến CartScreenActivity
                     context.startActivity(Intent(context, CartScreenActivity::class.java))
                 }
             )
@@ -235,7 +241,7 @@ fun OrderListScreen(
             ) {
                 Text(
                     text = "Chưa có đơn hàng nào",
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onBackground,
                     fontSize = 16.sp
                 )
             }
@@ -243,7 +249,7 @@ fun OrderListScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0xFFF5F5F5))
+                    .background(MaterialTheme.colorScheme.background)
                     .padding(paddingValues)
             ) {
                 items(orders) { order ->
@@ -263,7 +269,7 @@ fun OrderItem(order: Order, onClick: () -> Unit) {
             .padding(horizontal = 16.dp)
             .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(
             modifier = Modifier
@@ -276,7 +282,7 @@ fun OrderItem(order: Order, onClick: () -> Unit) {
                 Text(
                     text = "Đơn hàng #${order.orderId.shortenOrderId()}",
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 OrderStatusChip(status = order.status)
             }
@@ -285,7 +291,7 @@ fun OrderItem(order: Order, onClick: () -> Unit) {
 
             Text(
                 text = "Ngày đặt: ${SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(order.orderDate)}",
-                color = Color.Gray,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 14.sp
             )
 
@@ -293,7 +299,7 @@ fun OrderItem(order: Order, onClick: () -> Unit) {
 
             Text(
                 text = "${order.items.size} sản phẩm",
-                color = Color.Gray,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 14.sp
             )
 
@@ -301,7 +307,7 @@ fun OrderItem(order: Order, onClick: () -> Unit) {
 
             Text(
                 text = "Tổng tiền: ${DecimalFormat("#,###").format(order.itemsTotal)}đ",
-                color = Color(0xFFFF0000),
+                color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold
             )
         }
@@ -311,11 +317,11 @@ fun OrderItem(order: Order, onClick: () -> Unit) {
 @Composable
 fun OrderStatusChip(status: OrderStatus) {
     val (backgroundColor, textColor) = when (status) {
-        OrderStatus.PENDING -> Color(0xFFFFF3E0) to Color(0xFFFF9800)
-        OrderStatus.CONFIRMED -> Color(0xFFE3F2FD) to Color(0xFF2196F3)
-        OrderStatus.SHIPPING -> Color(0xFFF3E5F5) to Color(0xFF9C27B0)
-        OrderStatus.DELIVERED -> Color(0xFFE8F5E9) to Color(0xFF4CAF50)
-        OrderStatus.CANCELLED -> Color(0xFFFFEBEE) to Color(0xFFF44336)
+        OrderStatus.PENDING -> MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
+        OrderStatus.CONFIRMED -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
+        OrderStatus.SHIPPING -> MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
+        OrderStatus.DELIVERED -> MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.onPrimary
+        OrderStatus.CANCELLED -> MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
     }
 
     val statusText = when (status) {
@@ -348,18 +354,18 @@ fun OrderDetailScreen(order: Order, onBackClick: () -> Unit) {
                 title = {
                     Text(
                         text = "Chi tiết đơn hàng",
-                        color = Color.Black,
+                        color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Text("<", color = Color.Black, fontSize = 20.sp)
+                        Text("<", color = MaterialTheme.colorScheme.onBackground, fontSize = 20.sp)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.background
                 )
             )
         }
@@ -367,7 +373,7 @@ fun OrderDetailScreen(order: Order, onBackClick: () -> Unit) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.White)
+                .background(MaterialTheme.colorScheme.background)
                 .padding(paddingValues)
         ) {
             item {
@@ -375,17 +381,16 @@ fun OrderDetailScreen(order: Order, onBackClick: () -> Unit) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp)
                     ) {
-                        // Thông tin đơn hàng
                         Text(
-                            text = "Đơn hàng #${order.orderId}", // Bỏ shortenOrderId() để hiển thị toàn bộ ID
+                            text = "Đơn hàng #${order.orderId}",
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
-                            color = Color.Black
+                            color = MaterialTheme.colorScheme.onSurface
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -395,49 +400,36 @@ fun OrderDetailScreen(order: Order, onBackClick: () -> Unit) {
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Text(
-                            text = "Ngày đặt hàng",
-                            color = Color.Gray,
-                            fontSize = 14.sp
-                        )
-                        Text(
-                            text = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(order.orderDate),
-                            color = Color.Black,
-                            fontSize = 16.sp
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Text(
-                            text = "Thông tin giao hàng",
-                            color = Color.Gray,
-                            fontSize = 14.sp
-                        )
-                        Text(
-                            text = "Tên người nhận: ${order.recipientName}",
-                            color = Color.Black,
-                            fontSize = 16.sp
-                        )
-                        Text(
-                            text = "Số điện thoại: ${order.recipientPhone}",
-                            color = Color.Black,
-                            fontSize = 16.sp
-                        )
-                        Text(
-                            text = "Địa chỉ: ${order.shippingAddress}",
-                            color = Color.Black,
-                            fontSize = 16.sp
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Divider(color = Color(0xFFEEEEEE))
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // Danh sách sản phẩm
-                        Text(
-                            text = "Sản phẩm",
+                            text = "Thông tin người nhận",
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
-                            color = Color.Black
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "Họ tên: ${order.recipientName}",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Text(
+                            text = "Số điện thoại: ${order.recipientPhone}",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Text(
+                            text = "Địa chỉ: ${order.shippingAddress}",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = "Danh sách sản phẩm",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -449,87 +441,32 @@ fun OrderDetailScreen(order: Order, onBackClick: () -> Unit) {
                                     .padding(vertical = 8.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = item.productName,
-                                        color = Color.Black,
-                                        fontSize = 16.sp
-                                    )
-                                    Text(
-                                        text = "x${item.quantity}",
-                                        color = Color.Gray,
-                                        fontSize = 14.sp
-                                    )
-                                }
+                                Text(
+                                    text = "${item.productName} x${item.quantity}",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                                 Text(
                                     text = "${DecimalFormat("#,###").format(item.price)}đ",
-                                    color = Color(0xFFFF0000),
-                                    fontSize = 16.sp
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
-                        Divider(color = Color(0xFFEEEEEE))
-                        Spacer(modifier = Modifier.height(16.dp))
 
-                        // Hiển thị chi tiết giá
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "Tổng tiền sản phẩm",
+                                text = "Tổng tiền:",
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp,
-                                color = Color.Black
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 text = "${DecimalFormat("#,###").format(order.itemsTotal)}đ",
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp,
-                                color = Color.Black
-                            )
-                        }
-
-                        if (order.additionalFee > 0) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "Phí bổ sung",
-                                    fontSize = 14.sp,
-                                    color = Color.Gray
-                                )
-                                Text(
-                                    text = "+${DecimalFormat("#,###").format(order.additionalFee)}đ",
-                                    fontSize = 14.sp,
-                                    color = Color.Gray
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Divider(color = Color(0xFFEEEEEE))
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "Tổng tiền thanh toán",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp,
-                                color = Color.Black
-                            )
-                            Text(
-                                text = "${DecimalFormat("#,###").format(order.totalAmount)}đ",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp,
-                                color = Color(0xFFFF0000)
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
