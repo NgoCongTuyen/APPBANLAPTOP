@@ -12,7 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import com.example.appbanlaptop.Activity.BottomActivity.BottomMenu
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,20 +21,33 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.appbanlaptop.Activity.BottomActivity.BottomMenu
 import com.example.appbanlaptop.CategoryItem
 import com.example.appbanlaptop.Model.ProductItem
 import com.example.appbanlaptop.ProductItem
 import com.example.appbanlaptop.R
 import com.example.appbanlaptop.cart.CartScreenActivity
+import com.example.appbanlaptop.ui.theme.APPBANLAPTOPTheme
 import com.google.firebase.database.*
 
 class ListItemActivity : ComponentActivity() {
+    private val categoryId by lazy { intent.getStringExtra("CATEGORY_ID") ?: "0" }
+    private var isDarkMode = mutableStateOf(false)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val categoryId = intent.getStringExtra("CATEGORY_ID") ?: "0"
+        isDarkMode.value = ThemeManager.isDarkMode(this)
+
         setContent {
-            ListItemScreen(categoryId = categoryId, onBackClick = { finish() })
+
+            APPBANLAPTOPTheme(darkTheme = isDarkMode.value) {
+                ListItemScreen(categoryId = categoryId, onBackClick = { finish() })
+            }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        isDarkMode.value = ThemeManager.isDarkMode(this)
     }
 }
 
@@ -102,7 +115,10 @@ fun ListItemScreen(categoryId: String, onBackClick: () -> Unit) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Spacer(modifier = Modifier.width(16.dp))
-                        Text("$categoryTitle")
+                        Text(
+                            text = categoryTitle,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
                     }
                 },
                 navigationIcon = {
@@ -115,24 +131,22 @@ fun ListItemScreen(categoryId: String, onBackClick: () -> Unit) {
                         )
                     }
                 },
-                backgroundColor = Color(0xFF6200EE),
-                contentColor = Color.White
+                backgroundColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
             )
         },
         bottomBar = {
             BottomMenu(
                 onItemClick = {
-                    // Điều hướng đến CartScreenActivity
                     context.startActivity(Intent(context, CartScreenActivity::class.java))
                 }
             )
         }
-
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.White)
+                .background(MaterialTheme.colorScheme.background)
                 .padding(paddingValues)
         ) {
             if (productItems.isNotEmpty()) {
@@ -173,7 +187,7 @@ fun ListItemScreen(categoryId: String, onBackClick: () -> Unit) {
                 item {
                     Text(
                         text = "Không có sản phẩm nào trong danh mục này",
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                         textAlign = TextAlign.Center,
                         modifier = Modifier
                             .fillMaxWidth()

@@ -74,7 +74,7 @@ class PaymentActivity : ComponentActivity() {
         setContent {
             // Sử dụng remember để theo dõi sự thay đổi của theme
             val isDarkMode = remember { mutableStateOf(ThemeManager.isDarkMode(this)) }
-            
+
             // Cập nhật theme khi có thay đổi
             LaunchedEffect(Unit) {
                 ThemeManager.isDarkMode(this@PaymentActivity).let { darkMode ->
@@ -89,32 +89,32 @@ class PaymentActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    PaymentTheme {
-                        val navController = rememberNavController()
-                        NavHost(navController = navController, startDestination = "payment") {
-                            composable("payment") {
-                                PaymentScreen(navController, checkoutItems, totalPrice)
-                            }
-                            composable("address_list") {
-                                AddressListScreen(navController)
-                            }
-                            composable("add_address") {
-                                AddAddressScreen(navController, null)
-                            }
-                            composable("edit_address/{index}") { backStackEntry ->
-                                val index = backStackEntry.arguments?.getString("index")?.toIntOrNull()
-                                val addressToEdit = index?.let { AddressState.addresses.getOrNull(it) }
-                                AddAddressScreen(navController, addressToEdit)
-                            }
-                            composable("order_success") {
-                                OrderSuccessScreen(
-                                    navController = navController,
-                                    products = checkoutItems,
-                                    totalPrice = totalPrice
-                                )
-                            }
-                        }
-                    }
+//                    PaymentTheme {
+//                        val navController = rememberNavController()
+//                        NavHost(navController = navController, startDestination = "payment") {
+//                            composable("payment") {
+//                                PaymentScreen(navController, checkoutItems, totalPrice)
+//                            }
+//                            composable("address_list") {
+//                                AddressListScreen(navController)
+//                            }
+//                            composable("add_address") {
+//                                AddAddressScreen(navController, null)
+//                            }
+//                            composable("edit_address/{index}") { backStackEntry ->
+//                                val index = backStackEntry.arguments?.getString("index")?.toIntOrNull()
+//                                val addressToEdit = index?.let { AddressState.addresses.getOrNull(it) }
+//                                AddAddressScreen(navController, addressToEdit)
+//                            }
+//                            composable("order_success") {
+//                                OrderSuccessScreen(
+//                                    navController = navController,
+//                                    products = checkoutItems,
+//                                    totalPrice = totalPrice
+//                                )
+//                            }
+//                        }
+//                    }
                 }
             }
         }
@@ -811,5 +811,274 @@ fun PaymentMethod() {
         PaymentOption("Thẻ tín dụng", selectedMethod == "Thẻ tín dụng") { selectedMethod = "Thẻ tín dụng" }
         PaymentOption("Ví Momo", selectedMethod == "Ví Momo") { selectedMethod = "Ví Momo" }
         PaymentOption("ZaloPay", selectedMethod == "ZaloPay") { selectedMethod = "ZaloPay" }
+    }
+}
+
+@Composable
+fun PaymentOption(name: String, isSelected: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (isSelected) Color(0xFF3A3A3A) else Color.Transparent)
+            .clickable { onClick() }
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = name,
+            color = if (isSelected) Color(0xFFFF0000) else Color.White,
+            fontSize = 14.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+        )
+    }
+}
+
+@Composable
+fun TotalAndCheckoutButton(
+    productsSize: Int,
+    totalPrice: Double,
+    products: List<Product>,
+    selectedAddress: Address?,
+    navController: NavController
+) {
+    val formatter = DecimalFormat("#,###")
+    val formattedTotal = "${formatter.format(totalPrice.toInt())}đ"
+    val context = LocalContext.current
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFF1C2526))
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column {
+            Text(text = "$productsSize mặt hàng, tổng cộng", color = Color.White, fontSize = 14.sp)
+            Text(text = formattedTotal, color = Color(0xFFFF0000), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        }
+        Button(
+            onClick = {
+                // Kiểm tra xem đã chọn địa chỉ chưa
+                if (selectedAddress == null) {
+                    android.widget.Toast.makeText(context, "Vui lòng chọn địa chỉ giao hàng", android.widget.Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
+
+                // Lấy userId từ Firebase Authentication
+                val userId = FirebaseAuth.getInstance().currentUser?.uid
+                if (userId == null) {
+                    android.widget.Toast.makeText(context, "Vui lòng đăng nhập để đặt hàng", android.widget.Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
+
+                // Tạo dữ liệu đơn hàng
+                val order = mapOf(
+                    "address" to mapOf(
+                        "name" to selectedAddress.name,
+                        "phone" to selectedAddress.phone,
+                        "addressDetail" to selectedAddress.addressDetail,
+                        "isDefault" to selectedAddress.isDefault
+                    ),
+                    "products" to products.map { product ->
+                        mapOf(
+                            "name" to product.name,
+                            "color" to product.color,
+                            "price" to product.price,
+                            "quantity" to product.quantity,
+                            "imageUrl" to product.imageUrl
+                        )
+                    },
+                    "totalPrice" to totalPrice,
+                    "status" to "pending",
+                    "createdAt" to System.currentTimeMillis()
+                )
+
+                // Lưu vào Realtime Database
+                val database = FirebaseDatabase.getInstance()
+                val ordersRef = database.getReference("orders").child(userId)
+                val newOrderRef = ordersRef.push() // Tạo ID duy nhất cho đơn hàng
+
+                newOrderRef.setValue(order)
+                    .addOnSuccessListener {
+                        // Xóa các sản phẩm đã thanh toán khỏi giỏ hàng
+                        val cartRef = database.getReference("Cart").child(userId).child("items")
+                        products.forEach { product ->
+                            cartRef.orderByChild("title").equalTo(product.name)
+                                .addListenerForSingleValueEvent(object : ValueEventListener {
+                                    override fun onDataChange(snapshot: DataSnapshot) {
+                                        for (itemSnapshot in snapshot.children) {
+                                            itemSnapshot.ref.removeValue()
+                                        }
+                                    }
+
+                                    override fun onCancelled(error: DatabaseError) {
+                                        Log.e("TotalAndCheckoutButton", "Error removing cart item: ${error.message}")
+                                    }
+                                })
+                        }
+
+                        android.widget.Toast.makeText(context, "Đặt hàng thành công!", android.widget.Toast.LENGTH_SHORT).show()
+                        navController.navigate("order_success")
+                    }
+                    .addOnFailureListener { e ->
+                        android.widget.Toast.makeText(context, "Lỗi khi đặt hàng: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                        Log.e("TotalAndCheckoutButton", "Error saving order: ${e.message}", e)
+                    }
+            },
+            modifier = Modifier
+                .height(48.dp)
+                .clip(RoundedCornerShape(8.dp)),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF0000))
+        ) {
+            Text(text = "Đặt hàng", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun OrderSuccessScreen(
+    navController: NavController,
+    products: List<CartItem>,
+    totalPrice: Double,
+    address: Address?
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Đặt hàng thành công", color = Color.White) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Black)
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .padding(paddingValues)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.successful),
+                contentDescription = "Success",
+                tint = Color.Unspecified,
+                modifier = Modifier
+                    .size(100.dp)
+                    .padding(16.dp)
+            )
+
+            Text(
+                text = "Đặt hàng thành công!",
+                color = Color(0xFF00C853),
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1C2526))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = "Chi tiết đơn hàng",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+
+                    address?.let {
+                        Text(
+                            text = "Địa chỉ giao hàng:",
+                            color = Color(0xFFAAAAAA),
+                            fontSize = 14.sp
+                        )
+                        Text(
+                            text = "${it.name}\n${it.phone}\n${it.addressDetail}",
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                    }
+
+                    Text(
+                        text = "Sản phẩm:",
+                        color = Color(0xFFAAAAAA),
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    products.forEach { product ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "${product.title} x${product.quantity}",
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = "${DecimalFormat("#,###").format(product.price.toInt() * product.quantity)}đ",
+                                color = Color(0xFFFF0000),
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+
+                    Divider(
+                        color = Color(0xFF3A3A3A),
+                        modifier = Modifier.padding(vertical = 16.dp)
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Tổng cộng:",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "${DecimalFormat("#,###").format(totalPrice.toInt())}đ",
+                            color = Color(0xFFFF0000),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            Button(
+                onClick = {
+                    (navController.context as? ComponentActivity)?.finish()
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 24.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF0000))
+            ) {
+                Text(
+                    text = "Trở về trang chủ",
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
     }
 }

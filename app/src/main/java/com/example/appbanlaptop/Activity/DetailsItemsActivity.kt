@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,9 +47,10 @@ import com.example.appbanlaptop.ui.theme.APPBANLAPTOPTheme
 import com.google.firebase.auth.FirebaseAuth
 
 class DetailsItemsActivity : ComponentActivity() {
+    private var isDarkMode = mutableStateOf(false)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+        isDarkMode.value = ThemeManager.isDarkMode(this)
         // Kiểm tra xem người dùng đã đăng nhập chưa
         val currentUser = FirebaseAuth.getInstance().currentUser
         if (currentUser == null) {
@@ -68,75 +70,72 @@ class DetailsItemsActivity : ComponentActivity() {
         Log.d("DetailsItemsActivity", "title: $title, price: $price, models: $models")
 
         setContent {
-            val isDarkMode = ThemeManager.isDarkMode(this)
-            APPBANLAPTOPTheme(darkTheme = isDarkMode) {
-                setContent {
-                    DetailsItemsScreen(
-                        title = title,
-                        description = description,
-                        price = price,
-                        rating = rating,
-                        picUrl = picUrl,
-                        models = models,
-                        onBackClick = { finish() },
-                        onAddToCartClick = {
-                            // Xử lý thêm vào giỏ hàng
-                            val cleanedPrice = price.replace("[^0-9]".toRegex(), "")
-                            Log.d("DetailsItemsActivity", "Cleaned price: $cleanedPrice")
+            APPBANLAPTOPTheme(darkTheme = isDarkMode.value) {
+                DetailsItemsScreen(
+                    title = title,
+                    description = description,
+                    price = price,
+                    rating = rating,
+                    picUrl = picUrl,
+                    models = models,
+                    onBackClick = { finish() },
+                    onAddToCartClick = {
+                        // Xử lý thêm vào giỏ hàng
+                        val cleanedPrice = price.replace("[^0-9]".toRegex(), "")
+                        Log.d("DetailsItemsActivity", "Cleaned price: $cleanedPrice")
 
-                            val priceValue = cleanedPrice.toDoubleOrNull() ?: 0.0
-                            Log.d("DetailsItemsActivity", "Parsed priceValue: $priceValue")
+                        val priceValue = cleanedPrice.toDoubleOrNull() ?: 0.0
+                        Log.d("DetailsItemsActivity", "Parsed priceValue: $priceValue")
 
-                            val cartItem = CartItem(
-                                id = 0, // ID sẽ được tạo trong CartManager
-                                title = title,
-                                details = description,
-                                price = priceValue,
-                                imageUrl = picUrl,
-                                quantity = 1,
-                                isSelected = true
-                            )
-                            Log.d("DetailsItemsActivity", "Adding cart item: $cartItem")
-                            CartManager.addCartItem(
-                                cartItem,
-                                onError = { errorMessage ->
-                                    Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show()
-                                },
-                                onDuplicate = { message ->
-                                    Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-                                },
-                                onSuccess = { message ->
-                                    Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-                                }
-                            )
-                        },
-                        onBuyNowClick = {
-                            // Xử lý mua ngay
-                            val cleanedPrice = price.replace("[^0-9]".toRegex(), "")
-                            val priceValue = cleanedPrice.toDoubleOrNull() ?: 0.0
-
-                            val cartItem = CartItem(
-                                id = 0,
-                                title = title,
-                                details = description,
-                                price = priceValue,
-                                imageUrl = picUrl,
-                                quantity = 1,
-                                isSelected = true
-                            )
-
-                            // Tạo danh sách sản phẩm để thanh toán
-                            val checkoutItems = listOf(cartItem)
-
-                            // Chuyển đến trang thanh toán
-                            val intent = Intent(this, PaymentActivity::class.java).apply {
-                                putParcelableArrayListExtra("CHECKOUT_ITEMS", ArrayList(checkoutItems))
-                                putExtra("TOTAL_PRICE", priceValue)
+                        val cartItem = CartItem(
+                            id = 0, // ID sẽ được tạo trong CartManager
+                            title = title,
+                            details = description,
+                            price = priceValue,
+                            imageUrl = picUrl,
+                            quantity = 1,
+                            isSelected = true
+                        )
+                        Log.d("DetailsItemsActivity", "Adding cart item: $cartItem")
+                        CartManager.addCartItem(
+                            cartItem,
+                            onError = { errorMessage ->
+                                Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show()
+                            },
+                            onDuplicate = { message ->
+                                Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+                            },
+                            onSuccess = { message ->
+                                Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
                             }
-                            startActivity(intent)
+                        )
+                    },
+                    onBuyNowClick = {
+                        // Xử lý mua ngay
+                        val cleanedPrice = price.replace("[^0-9]".toRegex(), "")
+                        val priceValue = cleanedPrice.toDoubleOrNull() ?: 0.0
+
+                        val cartItem = CartItem(
+                            id = 0,
+                            title = title,
+                            details = description,
+                            price = priceValue,
+                            imageUrl = picUrl,
+                            quantity = 1,
+                            isSelected = true
+                        )
+
+                        // Tạo danh sách sản phẩm để thanh toán
+                        val checkoutItems = listOf(cartItem)
+
+                        // Chuyển đến trang thanh toán
+                        val intent = Intent(this, PaymentActivity::class.java).apply {
+                            putParcelableArrayListExtra("CHECKOUT_ITEMS", ArrayList(checkoutItems))
+                            putExtra("TOTAL_PRICE", priceValue)
                         }
-                    )
-                }
+                        startActivity(intent)
+                    }
+                )
             }
         }
     }
@@ -145,6 +144,10 @@ class DetailsItemsActivity : ComponentActivity() {
         super.onDestroy()
         // Dọn dẹp listener khi Activity bị hủy
         CartManager.cleanup()
+    }
+    override fun onResume() {
+        super.onResume()
+        isDarkMode.value = ThemeManager.isDarkMode(this)
     }
 }
 
@@ -170,7 +173,10 @@ fun DetailsItemsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Spacer(modifier = Modifier.width(16.dp))
-                        Text(title)
+                        Text(
+                            text = title,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
                     }
                 },
                 navigationIcon = {
@@ -183,8 +189,8 @@ fun DetailsItemsScreen(
                         )
                     }
                 },
-                backgroundColor = Color(0xFF6200EE),
-                contentColor = Color.White
+                backgroundColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
             )
         },
         bottomBar = {
@@ -199,7 +205,7 @@ fun DetailsItemsScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.White)
+                .background(MaterialTheme.colorScheme.background)
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -212,10 +218,10 @@ fun DetailsItemsScreen(
                         .fillMaxWidth()
                         .height(300.dp)
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Color.White)
+                        .background(MaterialTheme.colorScheme.surface)
                         .border(
                             width = 1.dp,
-                            color = Color(0xFFCCCCCC),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
                             shape = RoundedCornerShape(16.dp)
                         )
                         .shadow(4.dp, RoundedCornerShape(16.dp)),
@@ -231,11 +237,11 @@ fun DetailsItemsScreen(
                                 .memoryCachePolicy(CachePolicy.ENABLED)
                                 .diskCachePolicy(CachePolicy.ENABLED)
                                 .build(),
-                           contentDescription = "",
+                            contentDescription = "",
                             modifier = Modifier
                                 .fillMaxSize(0.8f)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(Color.White),
+                                .background(MaterialTheme.colorScheme.surface),
                             contentScale = ContentScale.Fit,
                             placeholder = painterResource(R.drawable.loadding),
                             error = painterResource(R.drawable.error),
@@ -255,10 +261,10 @@ fun DetailsItemsScreen(
                             Text(
                                 text = "Đang tải...",
                                 fontSize = 14.sp,
-                                color = Color.Gray,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
-                                    .background(Color.White.copy(alpha = 0.7f))
+                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
                                     .padding(4.dp)
                             )
                         } else if (isImageError) {
@@ -268,14 +274,14 @@ fun DetailsItemsScreen(
                                 color = Color.Red,
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
-                                    .background(Color.White.copy(alpha = 0.7f))
+                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
                                     .padding(4.dp)
                             )
                         }
                     } else {
                         Text(
                             text = "Không có hình ảnh",
-                            color = Color.Gray,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 16.sp,
                             modifier = Modifier.align(Alignment.Center)
                         )
@@ -290,7 +296,7 @@ fun DetailsItemsScreen(
                     text = title,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black,
+                    color = MaterialTheme.colorScheme.onBackground,
                     textAlign = TextAlign.Center
                 )
             }
@@ -304,7 +310,7 @@ fun DetailsItemsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text ="$price VNĐ" ,
+                        text = "$price VNĐ",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFFFF0000)
@@ -324,12 +330,12 @@ fun DetailsItemsScreen(
                     text = "Description",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
                     text = description,
                     fontSize = 16.sp,
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
@@ -342,7 +348,7 @@ fun DetailsItemsScreen(
                         text = "Available Models",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.Black
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                     LazyRow(
@@ -352,13 +358,13 @@ fun DetailsItemsScreen(
                         items(models) { model ->
                             Surface(
                                 modifier = Modifier.padding(5.dp),
-                                color = Color(0xFFF5F5F5),
+                                color = MaterialTheme.colorScheme.surface,
                                 shape = RoundedCornerShape(8.dp)
                             ) {
                                 Text(
                                     text = model,
                                     fontSize = 14.sp,
-                                    color = Color.Black,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.padding(8.dp)
                                 )
                             }
@@ -386,7 +392,7 @@ fun DetailsItemsScreen(
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(
                             backgroundColor = Color(0xFFCCCCCC),
-                            contentColor = Color.Black
+                            contentColor = MaterialTheme.colorScheme.onSurface
                         )
                     ) {
                         Text(
@@ -406,7 +412,7 @@ fun DetailsItemsScreen(
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(
                             backgroundColor = Color(0xFFFF0000),
-                            contentColor = Color.White
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         )
                     ) {
                         Text(

@@ -72,8 +72,6 @@ import com.example.appbanlaptop.Activity.DetailsItemsActivity
 import com.example.appbanlaptop.Activity.ListItemActivity
 import com.example.appbanlaptop.Activity.ProfileActivity
 import com.example.appbanlaptop.Activity.ThemeManager
-
-
 import com.example.appbanlaptop.Model.ProductItem
 import com.example.appbanlaptop.ViewModel.MainViewModel
 import com.example.appbanlaptop.cart.CartScreenActivity
@@ -84,23 +82,27 @@ import com.google.accompanist.pager.rememberPagerState
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import searchProducts
 
 class MainActivity : ComponentActivity() {
+    private var isDarkMode = mutableStateOf(false)
     private val viewModel: MainViewModel by viewModels()
-    val currentUser = FirebaseAuth.getInstance().currentUser
-    val username = currentUser?.displayName ?: currentUser?.email?.substringBefore("@") ?: "User"
+    private val currentUser = FirebaseAuth.getInstance().currentUser
+    private val username by lazy {
+        currentUser?.displayName ?: currentUser?.email?.substringBefore("@") ?: "User"
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        isDarkMode.value = ThemeManager.isDarkMode(this)
         window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
         window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
 
         setContent {
-            val isDarkMode = ThemeManager.isDarkMode(this)
-            PaymentTheme(darkTheme = isDarkMode) {
+
+
+            PaymentTheme(darkTheme = isDarkMode.value) {
                 MainActivityScreen(
                     productItems = viewModel.productItems,
                     categories = viewModel.categories,
@@ -109,10 +111,15 @@ class MainActivity : ComponentActivity() {
                         startActivity(intent)
                     },
                     username = username,
-                    isLoadingItems = viewModel.isLoadingItems // Truyền trạng thái tải
+                    isLoadingItems = viewModel.isLoadingItems
                 )
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        isDarkMode.value = ThemeManager.isDarkMode(this)
     }
 }
 
@@ -121,7 +128,6 @@ data class CategoryItem(
     val picUrl: String? = null,
     val title: String? = null
 )
-
 
 @Composable
 fun MainActivityScreen(
@@ -164,7 +170,7 @@ fun MainActivityScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.White)
+                .background(MaterialTheme.colorScheme.background)
                 .padding(paddingValues)
                 .padding(top = 18.dp)
         ) {
@@ -179,7 +185,6 @@ fun MainActivityScreen(
                     Box(
                         modifier = Modifier
                             .weight(2f),
-//                            .fillMaxWidth(),
                         contentAlignment = Alignment.Center
                     ) {
                         Image(
@@ -188,25 +193,29 @@ fun MainActivityScreen(
                             modifier = Modifier
                                 .size(48.dp)
                                 .clip(CircleShape)
-                                .background(Color.White)
+                                .background(MaterialTheme.colorScheme.surface)
                         )
                     }
-                    Column (
+                    Column(
                         modifier = Modifier
                             .weight(4f)
                     ) {
-                        Text(text = "Welcome Back", fontSize = 16.sp, color = Color.Gray)
+                        Text(
+                            text = "Welcome Back",
+                            fontSize = 16.sp,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                        )
                         Text(
                             text = username,
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black
+                            color = MaterialTheme.colorScheme.onBackground
                         )
                     }
-                    Row (
+                    Row(
                         modifier = Modifier
                             .weight(1f)
-                    ){
+                    ) {
                         Image(
                             painter = painterResource(R.drawable.search_icon),
                             contentDescription = "Search",
@@ -242,10 +251,19 @@ fun MainActivityScreen(
                             Icon(
                                 imageVector = Icons.Default.Search,
                                 contentDescription = "Search Icon",
-                                tint = Color.Gray
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         },
-                        singleLine = true
+                        singleLine = true,
+                        colors = androidx.compose.material3.TextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            cursorColor = MaterialTheme.colorScheme.primary
+                        )
                     )
                 }
             }
@@ -256,11 +274,12 @@ fun MainActivityScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp)
-                            .wrapContentSize(Alignment.Center)
+                            .wrapContentSize(Alignment.Center),
+                        color = MaterialTheme.colorScheme.primary
                     )
                     Text(
                         text = "Đang tìm kiếm...",
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth().padding(8.dp)
                     )
@@ -269,7 +288,7 @@ fun MainActivityScreen(
                 item {
                     Text(
                         text = "Không tìm thấy sản phẩm nào",
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth().padding(16.dp)
                     )
@@ -321,11 +340,12 @@ fun MainActivityScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(10.dp)
-                            .wrapContentSize(Alignment.Center)
+                            .wrapContentSize(Alignment.Center),
+                        color = MaterialTheme.colorScheme.primary
                     )
                     Text(
                         text = "Đang tải danh sách sản phẩm...",
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth().padding(8.dp)
                     )
@@ -369,7 +389,7 @@ fun MainActivityScreen(
                 item {
                     Text(
                         text = "Không có sản phẩm được đề xuất",
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth().padding(16.dp)
                     )
@@ -418,7 +438,7 @@ fun CategoryItem(
             modifier = Modifier
                 .size(50.dp)
                 .background(
-                    color = if (isSelected) Color(0xFF6200EE) else Color(0xFFE0E0E0),
+                    color = if (isSelected) Color(0xFF6200EE) else MaterialTheme.colorScheme.surface,
                     shape = RoundedCornerShape(8.dp)
                 ),
             contentAlignment = Alignment.Center
@@ -430,8 +450,8 @@ fun CategoryItem(
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(imageUrl)
-                        .memoryCachePolicy(CachePolicy.ENABLED) // Bật bộ nhớ đệm
-                        .diskCachePolicy(CachePolicy.ENABLED)   // Bật bộ nhớ đệm trên đĩa
+                        .memoryCachePolicy(CachePolicy.ENABLED)
+                        .diskCachePolicy(CachePolicy.ENABLED)
                         .build(),
                     contentDescription = item.title,
                     modifier = Modifier
@@ -440,7 +460,7 @@ fun CategoryItem(
                     contentScale = ContentScale.Fit,
                     placeholder = painterResource(R.drawable.loadding),
                     error = painterResource(R.drawable.error),
-                    colorFilter = if (isSelected) ColorFilter.tint(Color.White) else null,
+                    colorFilter = if (isSelected) ColorFilter.tint(MaterialTheme.colorScheme.onPrimary) else null,
                     onLoading = { isImageLoading = true },
                     onSuccess = {
                         isImageLoading = false
@@ -456,10 +476,10 @@ fun CategoryItem(
                     Text(
                         text = "Đang tải...",
                         fontSize = 10.sp,
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .background(Color.White.copy(alpha = 0.7f))
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
                             .padding(2.dp)
                     )
                 } else if (isImageError) {
@@ -469,7 +489,7 @@ fun CategoryItem(
                         color = Color.Red,
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .background(Color.White.copy(alpha = 0.7f))
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
                             .padding(2.dp)
                     )
                 }
@@ -481,7 +501,7 @@ fun CategoryItem(
                         .size(40.dp)
                         .clip(RoundedCornerShape(8.dp)),
                     contentScale = ContentScale.Fit,
-                    colorFilter = if (isSelected) ColorFilter.tint(Color.White) else null
+                    colorFilter = if (isSelected) ColorFilter.tint(MaterialTheme.colorScheme.onPrimary) else null
                 )
             }
         }
@@ -489,7 +509,7 @@ fun CategoryItem(
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = item.title ?: "Không có tiêu đề",
-                color = Color.Black,
+                color = MaterialTheme.colorScheme.onBackground,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -508,11 +528,10 @@ fun SectionTitle(title: String) {
     ) {
         Text(
             text = title,
-            color = Color.Black,
+            color = MaterialTheme.colorScheme.onBackground,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold
         )
-
     }
 }
 
@@ -522,7 +541,7 @@ fun ProductItem(product: ProductItem) {
         modifier = Modifier
             .width(150.dp)
             .height(220.dp)
-            .background(Color(0xFFF5F5F5), shape = RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(12.dp))
             .padding(14.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -530,19 +549,19 @@ fun ProductItem(product: ProductItem) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(140.dp)
-                .background(Color(0xFFE0E0E0), shape = RoundedCornerShape(8.dp)),
+                .background(MaterialTheme.colorScheme.background, shape = RoundedCornerShape(8.dp)),
             contentAlignment = Alignment.Center
         ) {
             product.picUrl?.takeIf { it.isNotEmpty() }?.let { imageUrls ->
-                val imageUrl = imageUrls[0] // Lấy URL đầu tiên trong danh sách
+                val imageUrl = imageUrls[0]
                 var isImageLoading by remember { mutableStateOf(true) }
                 var isImageError by remember { mutableStateOf(false) }
 
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(imageUrl)
-                        .memoryCachePolicy(CachePolicy.ENABLED) // Bật bộ nhớ đệm
-                        .diskCachePolicy(CachePolicy.ENABLED)   // Bật bộ nhớ đệm trên đĩa
+                        .memoryCachePolicy(CachePolicy.ENABLED)
+                        .diskCachePolicy(CachePolicy.ENABLED)
                         .build(),
                     contentDescription = product.title,
                     modifier = Modifier
@@ -567,10 +586,10 @@ fun ProductItem(product: ProductItem) {
                     Text(
                         text = "Đang tải...",
                         fontSize = 12.sp,
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .background(Color.White.copy(alpha = 0.7f))
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
                             .padding(4.dp)
                     )
                 } else if (isImageError) {
@@ -580,7 +599,7 @@ fun ProductItem(product: ProductItem) {
                         color = Color.Red,
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .background(Color.White.copy(alpha = 0.7f))
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
                             .padding(4.dp)
                     )
                 }
@@ -596,10 +615,10 @@ fun ProductItem(product: ProductItem) {
                 Text(
                     text = "Không có hình ảnh",
                     fontSize = 12.sp,
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .background(Color.White.copy(alpha = 0.7f))
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
                         .padding(4.dp)
                 )
             }
@@ -609,6 +628,7 @@ fun ProductItem(product: ProductItem) {
             text = product.title ?: "Không có tiêu đề",
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -679,12 +699,12 @@ fun AutoSlidingCarousel(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(150.dp)
-                .clip(RoundedCornerShape(12.dp)) // Giữ viền bo góc
+                .clip(RoundedCornerShape(12.dp))
         ) { page ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0xFF6200EE)) // Giữ background nếu cần
+                    .background(Color(0xFF6200EE))
             ) {
                 Image(
                     painter = painterResource(id = banners[page]),
@@ -707,7 +727,7 @@ fun DotIndicator(
     selectedIndex: Int,
     dotSize: Dp = 8.dp,
     selectedColor: Color = Color(0xFF6200EE),
-    unselectedColor: Color = Color.Gray,
+    unselectedColor: Color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -731,5 +751,3 @@ fun DotIndicator(
         }
     }
 }
-
-

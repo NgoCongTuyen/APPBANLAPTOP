@@ -106,7 +106,7 @@ object BottomActivity {
                 tint = Color.White,
                 modifier = Modifier.size(24.dp)
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(0.dp))
             Text(
                 text = text,
                 color = Color.White,

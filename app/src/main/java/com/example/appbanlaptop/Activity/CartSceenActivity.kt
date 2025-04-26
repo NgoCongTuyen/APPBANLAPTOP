@@ -47,8 +47,11 @@ import com.example.appbanlaptop.Activity.ThemeManager
 import com.example.appbanlaptop.ui.theme.APPBANLAPTOPTheme
 
 class CartScreenActivity : ComponentActivity() {
+    private var isDarkMode = mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        isDarkMode.value = ThemeManager.isDarkMode(this)
 
         val currentUser = FirebaseAuth.getInstance().currentUser
         if (currentUser == null) {
@@ -60,16 +63,6 @@ class CartScreenActivity : ComponentActivity() {
         CartManager.setUserId(currentUser.uid)
 
         setContent {
-            val isDarkMode = remember { mutableStateOf(ThemeManager.isDarkMode(this)) }
-            
-            // Cập nhật theme khi có thay đổi
-            LaunchedEffect(Unit) {
-                ThemeManager.isDarkMode(this@CartScreenActivity).let { darkMode ->
-                    if (darkMode != isDarkMode.value) {
-                        isDarkMode.value = darkMode
-                    }
-                }
-            }
 
             APPBANLAPTOPTheme(darkTheme = isDarkMode.value) {
                 CartScreen(
@@ -83,6 +76,11 @@ class CartScreenActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         CartManager.cleanup()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        isDarkMode.value = ThemeManager.isDarkMode(this)
     }
 }
 
