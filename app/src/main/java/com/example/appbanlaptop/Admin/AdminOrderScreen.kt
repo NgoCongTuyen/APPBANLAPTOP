@@ -24,6 +24,7 @@ import com.example.appbanlaptop.Model.OrderManager
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.math.absoluteValue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -175,6 +176,11 @@ fun AdminOrderItem(order: Order, onStatusUpdate: (String) -> Unit) {
     var showItems by remember { mutableStateOf(false) }
     val statusOptions = listOf("pending", "confirmed", "shipping", "delivered", "cancelled")
 
+    // Log để kiểm tra items
+    LaunchedEffect(order) {
+        Log.d("AdminOrderItem", "Order ${order.id}: items = ${order.items}")
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -200,7 +206,7 @@ fun AdminOrderItem(order: Order, onStatusUpdate: (String) -> Unit) {
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Người dùng: ${order.userId ?: "N/A"}",
+                text = "Người dùng: #${order.userId?.toHashedNumber() ?: "N/A"}",
                 color = Color.Gray,
                 fontSize = 14.sp
             )
@@ -333,10 +339,16 @@ fun OrderStatusChip(status: String) {
     }
 }
 
-fun String.shortenOrderId(maxLength: Int = 8): String {
+fun String.shortenOrderId(maxLength: Int = 10): String {
     return if (this.length <= maxLength) {
         this
     } else {
         "${this.take(maxLength)}..."
     }
 }
+
+fun String.toHashedNumber(maxLength: Int = 10): String {
+    val hash = this.hashCode().toLong().absoluteValue % 100000000
+    return hash.toString().padStart(maxLength, '0')
+}
+

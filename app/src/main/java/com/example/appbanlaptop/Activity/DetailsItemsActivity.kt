@@ -298,7 +298,7 @@ fun DetailsItemsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = price,
+                        text ="$price VNĐ" ,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFFFF0000)

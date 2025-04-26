@@ -11,7 +11,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
@@ -29,29 +28,23 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.room.Delete
 import coil.compose.rememberAsyncImagePainter
-import com.example.appbanlaptop.Model.Product
+import com.example.appbanlaptop.Model.ProductItem
 import com.example.appbanlaptop.Model.ProductManager
 import com.example.appbanlaptop.R
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.rememberPagerState
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminProductScreen(modifier: Modifier = Modifier) {
-    val products by ProductManager.productsFlow.collectAsState()
+    val products by ProductManager.itemsFlow.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
     val context = LocalContext.current
     var isLoading by remember { mutableStateOf(true) }
 
-    // Cleanup listener khi Composable bị hủy
     DisposableEffect(Unit) {
         onDispose {
             ProductManager.cleanup()
@@ -59,59 +52,72 @@ fun AdminProductScreen(modifier: Modifier = Modifier) {
         }
     }
 
-    // Kiểm tra trạng thái tải
     LaunchedEffect(products) {
         Log.d("AdminProductScreen", "Products cập nhật: ${products.size} sản phẩm")
         isLoading = false
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
-        when {
-            isLoading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
+    Column(modifier = modifier.fillMaxSize()) {
+        // Thanh tìm kiếm
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            label = { Text("Tìm kiếm sản phẩm") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+        )
+
+        Box(modifier = Modifier.weight(1f)) {
+            when {
+                isLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
                 }
-            }
-            products.isEmpty() -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Không có sản phẩm nào",
-                        color = Color.Gray,
-                        textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.titleMedium
-                    )
+                products.isEmpty() -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Không có sản phẩm nào",
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
                 }
-            }
-            else -> {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(8.dp)
-                ) {
-                    items(products, key = { it.id ?: it.hashCode().toString() }) { product ->
-                        ProductCard(product = product)
+                else -> {
+                    val filteredProducts = products.filter {
+                        it.title?.contains(searchQuery, ignoreCase = true) == true ||
+                                it.categoryId?.contains(searchQuery, ignoreCase = true) == true
+                    }
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(8.dp)
+                    ) {
+                        items(filteredProducts, key = { it.id ?: it.hashCode().toString() }) { product ->
+                            ProductCard(product = product)
+                        }
                     }
                 }
             }
-        }
 
-        // Nút thêm sản phẩm
-        FloatingActionButton(
-            onClick = { showAddDialog = true },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp)
-        ) {
-            Icon(Icons.Default.Add, contentDescription = "Thêm sản phẩm")
+            FloatingActionButton(
+                onClick = { showAddDialog = true },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Thêm sản phẩm")
+            }
         }
     }
 
-    // Dialog thêm sản phẩm
     if (showAddDialog) {
         AddProductDialog(
             onDismiss = { showAddDialog = false },
@@ -131,12 +137,11 @@ fun AdminProductScreen(modifier: Modifier = Modifier) {
     }
 }
 
-// Composable cho từng sản phẩm
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddProductDialog(
     onDismiss: () -> Unit,
-    onAddProduct: (Product) -> Unit
+    onAddProduct: (ProductItem) -> Unit
 ) {
     var categoryId by remember { mutableStateOf("") }
     var title by remember { mutableStateOf("") }
@@ -153,74 +158,90 @@ fun AddProductDialog(
         onDismissRequest = { if (!isLoading) onDismiss() },
         title = { Text("Thêm sản phẩm mới") },
         text = {
-            Column(
+            LazyColumn (
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedTextField(
-                    value = categoryId,
-                    onValueChange = { categoryId = it },
-                    label = { Text("ID danh mục") },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isLoading
-                )
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("Tên sản phẩm") },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isLoading
-                )
-                OutlinedTextField(
-                    value = price,
-                    onValueChange = { price = it },
-                    label = { Text("Giá (VNĐ)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    enabled = !isLoading
-                )
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Mô tả") },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isLoading
-                )
-                OutlinedTextField(
-                    value = picUrl,
-                    onValueChange = { picUrl = it },
-                    label = { Text("URL hình ảnh (phân cách bằng dấu phẩy)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isLoading
-                )
-                OutlinedTextField(
-                    value = rating,
-                    onValueChange = { rating = it },
-                    label = { Text("Đánh giá (0-5)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    enabled = !isLoading
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(
-                        checked = showRecommended,
-                        onCheckedChange = { showRecommended = it },
+                item {
+                    OutlinedTextField(
+                        value = categoryId,
+                        onValueChange = { categoryId = it },
+                        label = { Text("ID danh mục") },
+                        modifier = Modifier.fillMaxWidth(),
                         enabled = !isLoading
                     )
-                    Text("Hiển thị đề xuất")
                 }
-                OutlinedTextField(
-                    value = model,
-                    onValueChange = { model = it },
-                    label = { Text("Mẫu mã (phân cách bằng dấu phẩy)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isLoading
-                )
+                item {
+                    OutlinedTextField(
+                        value = title,
+                        onValueChange = { title = it },
+                        label = { Text("Tên sản phẩm") },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isLoading
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        value = price,
+                        onValueChange = { price = it },
+                        label = { Text("Giá (VNĐ)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        enabled = !isLoading
+                    )
+                }
+              item {
+                  OutlinedTextField(
+                      value = description,
+                      onValueChange = { description = it },
+                      label = { Text("Mô tả") },
+                      modifier = Modifier.fillMaxWidth(),
+                      enabled = !isLoading
+                  )
+              }
+                item {
+                    OutlinedTextField(
+                        value = picUrl,
+                        onValueChange = { picUrl = it },
+                        label = { Text("URL hình ảnh (phân cách bằng dấu phẩy)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isLoading
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        value = rating,
+                        onValueChange = { rating = it },
+                        label = { Text("Đánh giá (0-5)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        enabled = !isLoading
+                    )
+                }
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = showRecommended,
+                            onCheckedChange = { showRecommended = it },
+                            enabled = !isLoading
+                        )
+                        Text("Hiển thị đề xuất")
+                    }
+                }
+                item {
+                     OutlinedTextField(
+                        value = model,
+                        onValueChange = { model = it },
+                        label = { Text("Mẫu mã (phân cách bằng dấu phẩy)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isLoading
+                    )
+                }
             }
         },
         confirmButton = {
@@ -231,9 +252,9 @@ fun AddProductDialog(
                         Toast.makeText(context, "Vui lòng nhập tên sản phẩm", Toast.LENGTH_SHORT).show()
                         return@TextButton
                     }
-                    val priceDouble = price.toDoubleOrNull()
-                    if (price.isBlank() || priceDouble == null || priceDouble < 0) {
-                        Toast.makeText(context, "Vui lòng nhập giá hợp lệ (số không âm)", Toast.LENGTH_SHORT).show()
+                    val cleanedPrice = price.replace("[,.\\s]".toRegex(), "")
+                    if (price.isBlank() || !cleanedPrice.matches("\\d+".toRegex())) {
+                        Toast.makeText(context, "Vui lòng nhập giá hợp lệ (ví dụ: 2375000 hoặc 2.375.000)", Toast.LENGTH_SHORT).show()
                         return@TextButton
                     }
                     val ratingDouble = rating.toDoubleOrNull()
@@ -241,14 +262,18 @@ fun AddProductDialog(
                         Toast.makeText(context, "Đánh giá phải là số từ 0 đến 5", Toast.LENGTH_SHORT).show()
                         return@TextButton
                     }
+
                     isLoading = true
-                    val newProduct = Product(
+                    val formattedPrice = cleanedPrice.toLong().let { priceLong ->
+                        String.format("%,d", priceLong).replace(",", ".")
+                    }
+                    val newProduct = ProductItem(
+                        categoryId = categoryId,
                         title = title,
-                        price = priceDouble,
+                        price = formattedPrice,
                         description = description,
                         picUrl = if (picUrl.isNotBlank()) picUrl.split(",").map { it.trim() } else emptyList(),
-                        categoryId = categoryId,
-                        rating = ratingDouble ?: 0.0,
+                        rating = ratingDouble,
                         showRecommended = showRecommended,
                         model = if (model.isNotBlank()) model.split(",").map { it.trim() } else emptyList()
                     )
@@ -279,8 +304,9 @@ fun AddProductDialog(
 
 @OptIn(ExperimentalPagerApi::class)
 @Composable
-fun ProductCard(product: Product) {
+fun ProductCard(product: ProductItem) {
     var showEditDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     Card(
@@ -296,34 +322,28 @@ fun ProductCard(product: Product) {
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Hiển thị hình ảnh sản phẩm
+            // Hình ảnh sản phẩm
             if (!product.picUrl.isNullOrEmpty()) {
-                val pagerState = rememberPagerState() // Không cần pageCount ở đây
+                val pagerState = rememberPagerState()
                 HorizontalPager(
-                    count = product.picUrl.size, // Truyền pageCount vào HorizontalPager
+                    count = product.picUrl.size,
                     state = pagerState,
                     modifier = Modifier
                         .size(80.dp)
                         .padding(end = 16.dp),
                     contentPadding = PaddingValues(0.dp),
-                    itemSpacing = 4.dp,
-                    verticalAlignment = Alignment.CenterVertically,
-                    userScrollEnabled = true,
-                    key = { page -> product.picUrl[page] }
+                    itemSpacing = 4.dp
                 ) { page ->
                     val imageUrl = product.picUrl[page]
                     Image(
                         painter = rememberAsyncImagePainter(
                             model = imageUrl,
-                            placeholder = painterResource(R.drawable.banner1),
-                            error = painterResource(R.drawable.error),
-                            onError = {
-                                Log.e("ProductCard", "Lỗi tải hình ảnh: $imageUrl")
-                            }
+                            placeholder = painterResource(R.drawable.loadding),
+                            error = painterResource(R.drawable.error)
                         ),
                         contentDescription = product.title ?: "Sản phẩm",
                         modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+                        contentScale = ContentScale.Fit
                     )
                 }
             } else {
@@ -355,11 +375,15 @@ fun ProductCard(product: Product) {
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "Giá: ${String.format("%,.2f", product.price)} VNĐ",
+                    text = "Giá: ${product.price ?: "0"} VNĐ",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
-                    text = "Đ đánh giá: ${product.rating ?: 0.0}/5",
+                    text = "Đánh giá: ${product.rating ?: 0.0}/5",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Text(
+                    text = "Danh mục: ${product.categoryId ?: "Không có"}",
                     style = MaterialTheme.typography.bodySmall
                 )
             }
@@ -371,24 +395,45 @@ fun ProductCard(product: Product) {
                 IconButton(onClick = { showEditDialog = true }) {
                     Icon(Icons.Default.Edit, contentDescription = "Sửa sản phẩm")
                 }
-                IconButton(onClick = {
-                    ProductManager.removeProduct(
-                        productId = product.id,
-                        onSuccess = {
-                            Toast.makeText(context, "Đã xóa sản phẩm: ${product.title}", Toast.LENGTH_SHORT).show()
-                        },
-                        onError = { error ->
-                            Toast.makeText(context, "Lỗi: $error", Toast.LENGTH_SHORT).show()
-                        }
-                    )
-                }) {
+                IconButton(onClick = { showDeleteDialog = true }) {
                     Icon(Icons.Default.Delete, contentDescription = "Xóa sản phẩm")
                 }
             }
         }
     }
 
-    // Dialog chỉnh sửa sản phẩm
+    // Dialog xác nhận xóa
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Xác nhận xóa") },
+            text = { Text("Bạn có chắc muốn xóa sản phẩm '${product.title}'?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        ProductManager.removeProduct(
+                            productId = product.id,
+                            onSuccess = {
+                                Toast.makeText(context, "Đã xóa sản phẩm: ${product.title}", Toast.LENGTH_SHORT).show()
+                                showDeleteDialog = false
+                            },
+                            onError = { error ->
+                                Toast.makeText(context, "Lỗi: $error", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+                ) {
+                    Text("Xóa")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Hủy")
+                }
+            }
+        )
+    }
+
     if (showEditDialog) {
         EditProductDialog(
             product = product,
@@ -412,17 +457,17 @@ fun ProductCard(product: Product) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditProductDialog(
-    product: Product,
+    product: ProductItem,
     onDismiss: () -> Unit,
-    onUpdateProduct: (Product) -> Unit
+    onUpdateProduct: (ProductItem) -> Unit
 ) {
     var categoryId by remember { mutableStateOf(product.categoryId ?: "") }
     var title by remember { mutableStateOf(product.title ?: "") }
-    var price by remember { mutableStateOf(product.price.toString()) }
+    var price by remember { mutableStateOf(product.price ?: "") }
     var description by remember { mutableStateOf(product.description ?: "") }
     var picUrl by remember { mutableStateOf(product.picUrl?.joinToString(", ") ?: "") }
     var rating by remember { mutableStateOf(product.rating?.toString() ?: "") }
-    var showRecommended by remember { mutableStateOf(product.showRecommended ?: false) }
+    var showRecommended by remember { mutableStateOf(product.showRecommended) }
     var model by remember { mutableStateOf(product.model?.joinToString(", ") ?: "") }
     var isLoading by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -431,74 +476,90 @@ fun EditProductDialog(
         onDismissRequest = { if (!isLoading) onDismiss() },
         title = { Text("Chỉnh sửa sản phẩm") },
         text = {
-            Column(
+            LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedTextField(
-                    value = categoryId,
-                    onValueChange = { categoryId = it },
-                    label = { Text("ID danh mục") },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isLoading
-                )
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("Tên sản phẩm") },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isLoading
-                )
-                OutlinedTextField(
-                    value = price,
-                    onValueChange = { price = it },
-                    label = { Text("Giá (VNĐ)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    enabled = !isLoading
-                )
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Mô tả") },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isLoading
-                )
-                OutlinedTextField(
-                    value = picUrl,
-                    onValueChange = { picUrl = it },
-                    label = { Text("URL hình ảnh (phân cách bằng dấu phẩy)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isLoading
-                )
-                OutlinedTextField(
-                    value = rating,
-                    onValueChange = { rating = it },
-                    label = { Text("Đánh giá (0-5)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    enabled = !isLoading
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(
-                        checked = showRecommended,
-                        onCheckedChange = { showRecommended = it },
+               item {
+                   OutlinedTextField(
+                       value = categoryId,
+                       onValueChange = { categoryId = it },
+                       label = { Text("ID danh mục") },
+                       modifier = Modifier.fillMaxWidth(),
+                       enabled = !isLoading
+                   )
+               }
+                item {
+                    OutlinedTextField(
+                        value = title,
+                        onValueChange = { title = it },
+                        label = { Text("Tên sản phẩm") },
+                        modifier = Modifier.fillMaxWidth(),
                         enabled = !isLoading
                     )
-                    Text("Hiển thị đề xuất")
                 }
-                OutlinedTextField(
-                    value = model,
-                    onValueChange = { model = it },
-                    label = { Text("Mẫu mã (phân cách bằng dấu phẩy)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isLoading
-                )
+                item {
+                    OutlinedTextField(
+                        value = price,
+                        onValueChange = { price = it },
+                        label = { Text("Giá (VNĐ)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        enabled = !isLoading
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        value = description,
+                        onValueChange = { description = it },
+                        label = { Text("Mô tả") },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isLoading
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        value = picUrl,
+                        onValueChange = { picUrl = it },
+                        label = { Text("URL hình ảnh (phân cách bằng dấu phẩy)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isLoading
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        value = rating,
+                        onValueChange = { rating = it },
+                        label = { Text("Đánh giá (0-5)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        enabled = !isLoading
+                    )
+                }
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = showRecommended,
+                            onCheckedChange = { showRecommended = it },
+                            enabled = !isLoading
+                        )
+                        Text("Hiển thị đề xuất")
+                    }
+                }
+                item {
+                    OutlinedTextField(
+                        value = model,
+                        onValueChange = { model = it },
+                        label = { Text("Mẫu mã (phân cách bằng dấu phẩy)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isLoading
+                    )
+                }
             }
         },
         confirmButton = {
@@ -509,9 +570,9 @@ fun EditProductDialog(
                         Toast.makeText(context, "Vui lòng nhập tên sản phẩm", Toast.LENGTH_SHORT).show()
                         return@TextButton
                     }
-                    val priceDouble = price.toDoubleOrNull()
-                    if (price.isBlank() || priceDouble == null || priceDouble < 0) {
-                        Toast.makeText(context, "Vui lòng nhập giá hợp lệ (số không âm)", Toast.LENGTH_SHORT).show()
+                    val cleanedPrice = price.replace("[,.\\s]".toRegex(), "")
+                    if (price.isBlank() || !cleanedPrice.matches("\\d+".toRegex())) {
+                        Toast.makeText(context, "Vui lòng nhập giá hợp lệ (ví dụ: 2375000 hoặc 2.375.000)", Toast.LENGTH_SHORT).show()
                         return@TextButton
                     }
                     val ratingDouble = rating.toDoubleOrNull()
@@ -520,13 +581,17 @@ fun EditProductDialog(
                         return@TextButton
                     }
                     isLoading = true
-                    val updatedProduct = product.copy(
+                    val formattedPrice = cleanedPrice.toLong().let { priceLong ->
+                        String.format("%,d", priceLong).replace(",", ".")
+                    }
+                    val updatedProduct = ProductItem(
+                        id = product.id,
+                        categoryId = categoryId,
                         title = title,
-                        price = priceDouble,
+                        price = formattedPrice,
                         description = description,
                         picUrl = if (picUrl.isNotBlank()) picUrl.split(",").map { it.trim() } else emptyList(),
-                        categoryId = categoryId,
-                        rating = ratingDouble ?: 0.0,
+                        rating = ratingDouble,
                         showRecommended = showRecommended,
                         model = if (model.isNotBlank()) model.split(",").map { it.trim() } else emptyList()
                     )
