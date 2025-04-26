@@ -41,7 +41,7 @@ import java.util.*
 import kotlinx.parcelize.Parcelize
 
 // Extension function để rút gọn orderId
-fun String.shortenOrderId(maxLength: Int = 8): String {
+fun String.shortenOrderId(maxLength: Int = 10): String {
     return if (this.length <= maxLength) {
         this
     } else {

@@ -46,34 +46,22 @@ data class Order(
 )
 
 
-data class Product(
-    val id: String? = null,
-    val title: String? = null,
-    val price: Double = 0.0,
-    val description: String? = null,
-    val picUrl: List<String>? = emptyList(),
-    val categoryId: String? = null,
-    val rating: Double? = 0.0,
-    val showRecommended: Boolean? = false,
-    val model: List<String>? = emptyList()
-)
-
 object ProductManager {
     private val database = FirebaseDatabase.getInstance()
     private val productsRef = database.getReference("Items")
-    private val products = mutableListOf<Product>()
-    private val _productsFlow = MutableStateFlow<List<Product>>(emptyList())
-    val productsFlow: StateFlow<List<Product>> = _productsFlow
+    private val items = mutableListOf<ProductItem>()
+    private val _itemsFlow = MutableStateFlow<List<ProductItem>>(emptyList())
+    val itemsFlow: StateFlow<List<ProductItem>> = _itemsFlow
     private var valueEventListener: ValueEventListener? = null
 
     init {
         setupListener()
     }
 
-    fun addProduct(product: Product, onSuccess: () -> Unit, onError: (String) -> Unit) {
+    fun addProduct(product: ProductItem, onSuccess: () -> Unit, onError: (String) -> Unit) {
         val newRef = productsRef.push()
         val productWithId = product.copy(id = newRef.key)
-
+        Log.d("ProductManager", "Thêm sản phẩm: $productWithId")
         newRef.setValue(productWithId)
             .addOnSuccessListener {
                 Log.d("ProductManager", "Thêm sản phẩm thành công: ${productWithId.title}")
@@ -85,7 +73,7 @@ object ProductManager {
             }
     }
 
-    fun updateProduct(product: Product, onSuccess: () -> Unit, onError: (String) -> Unit) {
+    fun updateProduct(product: ProductItem, onSuccess: () -> Unit, onError: (String) -> Unit) {
         product.id?.let { id ->
             productsRef.child(id).setValue(product)
                 .addOnSuccessListener {
@@ -132,18 +120,18 @@ object ProductManager {
         valueEventListener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 Log.d("ProductManager", "Nhận snapshot dữ liệu: exists=${snapshot.exists()}, childrenCount=${snapshot.childrenCount}")
-                products.clear()
+                items.clear()
                 if (!snapshot.exists() || snapshot.childrenCount == 0L) {
                     Log.d("ProductManager", "Không tìm thấy sản phẩm trong cơ sở dữ liệu")
-                    _productsFlow.value = emptyList()
+                    _itemsFlow.value = emptyList()
                     return
                 }
 
                 for (item in snapshot.children) {
                     try {
-                        val product = item.getValue(Product::class.java)?.copy(id = item.key)
+                        val product = item.getValue(ProductItem::class.java)?.copy(id = item.key)
                         if (product != null) {
-                            products.add(product)
+                            items.add(product)
                             Log.d("ProductManager", "Thêm sản phẩm: id=${product.id}, title=${product.title}")
                         } else {
                             Log.w("ProductManager", "Dữ liệu sản phẩm không hợp lệ tại key: ${item.key}")
@@ -152,19 +140,34 @@ object ProductManager {
                         Log.e("ProductManager", "Lỗi khi phân tích sản phẩm tại key: ${item.key}, lỗi: ${e.message}")
                     }
                 }
-                _productsFlow.value = products.toList()
-                Log.d("ProductManager", "Cập nhật productsFlow: ${products.size} sản phẩm")
+                _itemsFlow.value = items.toList()
+                Log.d("ProductManager", "Cập nhật itemsFlow: ${items.size} sản phẩm")
             }
 
             override fun onCancelled(error: DatabaseError) {
                 Log.e("ProductManager", "Lỗi cơ sở dữ liệu: ${error.message}, chi tiết: ${error.details}")
-                _productsFlow.value = emptyList() // Thông báo trạng thái lỗi bằng danh sách rỗng
+                _itemsFlow.value = emptyList()
             }
         }
         valueEventListener?.let {
             productsRef.addValueEventListener(it)
             Log.d("ProductManager", "Thiết lập listener Firebase thành công")
         }
+    }
+
+    // Thêm thuộc tính id vào ProductItem
+    private fun ProductItem.copy(id: String? = this.id): ProductItem {
+        return ProductItem(
+            categoryId = categoryId,
+            description = description,
+            model = model,
+            picUrl = picUrl,
+            price = price,
+            rating = rating,
+            showRecommended = showRecommended,
+            title = title,
+            id = id
+        )
     }
 }
 
