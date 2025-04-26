@@ -33,7 +33,7 @@ fun LoginScreen(
     onLoginSuccess: () -> Unit,
     onSignUpClicked: () -> Unit,
     onGoogleSignInClicked: () -> Unit,
-    onLogoutClicked: () -> Unit // Giữ lại callback nhưng không sử dụng ở đây
+    onLogoutClicked: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -173,7 +173,7 @@ fun LoginScreen(
                 .height(48.dp),
             shape = RoundedCornerShape(24.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color.Blue),
-            enabled = !viewModel.isLoading.value
+            enabled = !viewModel.isLoading.value && viewModel.email.value.isNotBlank() && viewModel.password.value.isNotBlank()
         ) {
             if (viewModel.isLoading.value) {
                 CircularProgressIndicator(

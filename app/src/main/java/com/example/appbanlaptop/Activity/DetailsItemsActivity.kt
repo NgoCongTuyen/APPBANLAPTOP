@@ -42,6 +42,7 @@ import com.example.appbanlaptop.Model.CartItem
 import com.example.appbanlaptop.Model.CartManager
 import com.example.appbanlaptop.R
 import com.example.appbanlaptop.payment.PaymentActivity
+import com.example.appbanlaptop.ui.theme.APPBANLAPTOPTheme
 import com.google.firebase.auth.FirebaseAuth
 
 class DetailsItemsActivity : ComponentActivity() {
@@ -67,71 +68,76 @@ class DetailsItemsActivity : ComponentActivity() {
         Log.d("DetailsItemsActivity", "title: $title, price: $price, models: $models")
 
         setContent {
-            DetailsItemsScreen(
-                title = title,
-                description = description,
-                price = price,
-                rating = rating,
-                picUrl = picUrl,
-                models = models,
-                onBackClick = { finish() },
-                onAddToCartClick = {
-                    // Xử lý thêm vào giỏ hàng
-                    val cleanedPrice = price.replace("[^0-9]".toRegex(), "")
-                    Log.d("DetailsItemsActivity", "Cleaned price: $cleanedPrice")
-
-                    val priceValue = cleanedPrice.toDoubleOrNull() ?: 0.0
-                    Log.d("DetailsItemsActivity", "Parsed priceValue: $priceValue")
-
-                    val cartItem = CartItem(
-                        id = 0, // ID sẽ được tạo trong CartManager
+            val isDarkMode = ThemeManager.isDarkMode(this)
+            APPBANLAPTOPTheme(darkTheme = isDarkMode) {
+                setContent {
+                    DetailsItemsScreen(
                         title = title,
-                        details = description,
-                        price = priceValue,
-                        imageUrl = picUrl,
-                        quantity = 1,
-                        isSelected = true
-                    )
-                    Log.d("DetailsItemsActivity", "Adding cart item: $cartItem")
-                    CartManager.addCartItem(
-                        cartItem,
-                        onError = { errorMessage ->
-                            Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show()
+                        description = description,
+                        price = price,
+                        rating = rating,
+                        picUrl = picUrl,
+                        models = models,
+                        onBackClick = { finish() },
+                        onAddToCartClick = {
+                            // Xử lý thêm vào giỏ hàng
+                            val cleanedPrice = price.replace("[^0-9]".toRegex(), "")
+                            Log.d("DetailsItemsActivity", "Cleaned price: $cleanedPrice")
+
+                            val priceValue = cleanedPrice.toDoubleOrNull() ?: 0.0
+                            Log.d("DetailsItemsActivity", "Parsed priceValue: $priceValue")
+
+                            val cartItem = CartItem(
+                                id = 0, // ID sẽ được tạo trong CartManager
+                                title = title,
+                                details = description,
+                                price = priceValue,
+                                imageUrl = picUrl,
+                                quantity = 1,
+                                isSelected = true
+                            )
+                            Log.d("DetailsItemsActivity", "Adding cart item: $cartItem")
+                            CartManager.addCartItem(
+                                cartItem,
+                                onError = { errorMessage ->
+                                    Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show()
+                                },
+                                onDuplicate = { message ->
+                                    Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+                                },
+                                onSuccess = { message ->
+                                    Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+                                }
+                            )
                         },
-                        onDuplicate = { message ->
-                            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-                        },
-                        onSuccess = { message ->
-                            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+                        onBuyNowClick = {
+                            // Xử lý mua ngay
+                            val cleanedPrice = price.replace("[^0-9]".toRegex(), "")
+                            val priceValue = cleanedPrice.toDoubleOrNull() ?: 0.0
+
+                            val cartItem = CartItem(
+                                id = 0,
+                                title = title,
+                                details = description,
+                                price = priceValue,
+                                imageUrl = picUrl,
+                                quantity = 1,
+                                isSelected = true
+                            )
+
+                            // Tạo danh sách sản phẩm để thanh toán
+                            val checkoutItems = listOf(cartItem)
+
+                            // Chuyển đến trang thanh toán
+                            val intent = Intent(this, PaymentActivity::class.java).apply {
+                                putParcelableArrayListExtra("CHECKOUT_ITEMS", ArrayList(checkoutItems))
+                                putExtra("TOTAL_PRICE", priceValue)
+                            }
+                            startActivity(intent)
                         }
                     )
-                },
-                onBuyNowClick = {
-                    // Xử lý mua ngay
-                    val cleanedPrice = price.replace("[^0-9]".toRegex(), "")
-                    val priceValue = cleanedPrice.toDoubleOrNull() ?: 0.0
-
-                    val cartItem = CartItem(
-                        id = 0,
-                        title = title,
-                        details = description,
-                        price = priceValue,
-                        imageUrl = picUrl,
-                        quantity = 1,
-                        isSelected = true
-                    )
-
-                    // Tạo danh sách sản phẩm để thanh toán
-                    val checkoutItems = listOf(cartItem)
-                    
-                    // Chuyển đến trang thanh toán
-                    val intent = Intent(this, PaymentActivity::class.java).apply {
-                        putParcelableArrayListExtra("CHECKOUT_ITEMS", ArrayList(checkoutItems))
-                        putExtra("TOTAL_PRICE", priceValue)
-                    }
-                    startActivity(intent)
                 }
-            )
+            }
         }
     }
 
@@ -298,7 +304,7 @@ fun DetailsItemsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = price,
+                        text ="$price VNĐ" ,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFFFF0000)

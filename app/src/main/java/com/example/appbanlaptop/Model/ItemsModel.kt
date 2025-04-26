@@ -1,9 +1,8 @@
 package com.example.appbanlaptop.Model
 
-
-
 data class ProductItem(
-    val categoryId: String? = null, // Đổi thành "categoryId" để khớp với JSON
+    val id: String? = null, // Thêm trường id
+    val categoryId: String? = null,
     val description: String? = null,
     val model: List<String>? = null,
     val picUrl: List<String>? = null,

@@ -41,9 +41,11 @@ import androidx.room.util.copy
 import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
+import com.example.appbanlaptop.Activity.ThemeManager
 import com.example.appbanlaptop.MainActivity
 import com.example.appbanlaptop.Model.CartItem
 import com.example.appbanlaptop.R
+import com.example.appbanlaptop.ui.theme.APPBANLAPTOPTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.DataSnapshot
@@ -70,35 +72,55 @@ class PaymentActivity : ComponentActivity() {
         Log.d("PaymentActivity", "Received items: size=${checkoutItems.size}, items=$checkoutItems, totalPrice=$totalPrice")
 
         setContent {
-            PaymentTheme {
-                val navController = rememberNavController()
-                NavHost(navController = navController, startDestination = "payment") {
-                    composable("payment") {
-                        PaymentScreen(navController, checkoutItems, totalPrice)
+            // Sử dụng remember để theo dõi sự thay đổi của theme
+            val isDarkMode = remember { mutableStateOf(ThemeManager.isDarkMode(this)) }
+            
+            // Cập nhật theme khi có thay đổi
+            LaunchedEffect(Unit) {
+                ThemeManager.isDarkMode(this@PaymentActivity).let { darkMode ->
+                    if (darkMode != isDarkMode.value) {
+                        isDarkMode.value = darkMode
                     }
-                    composable("address_list") {
-                        AddressListScreen(navController)
-                    }
-                    composable("add_address") {
-                        AddAddressScreen(navController, null) // Thêm mới
-                    }
-                    composable("edit_address/{index}") { backStackEntry ->
-                        val index = backStackEntry.arguments?.getString("index")?.toIntOrNull()
-                        val addressToEdit = index?.let { AddressState.addresses.getOrNull(it) }
-                        AddAddressScreen(navController, addressToEdit) // Chỉnh sửa
-                    }
-                    composable("order_success") {
-                        OrderSuccessScreen(
-                            navController = navController,
-                            products = checkoutItems,
-                            totalPrice = totalPrice
-                        )
+                }
+            }
+
+            APPBANLAPTOPTheme(darkTheme = isDarkMode.value) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    PaymentTheme {
+                        val navController = rememberNavController()
+                        NavHost(navController = navController, startDestination = "payment") {
+                            composable("payment") {
+                                PaymentScreen(navController, checkoutItems, totalPrice)
+                            }
+                            composable("address_list") {
+                                AddressListScreen(navController)
+                            }
+                            composable("add_address") {
+                                AddAddressScreen(navController, null)
+                            }
+                            composable("edit_address/{index}") { backStackEntry ->
+                                val index = backStackEntry.arguments?.getString("index")?.toIntOrNull()
+                                val addressToEdit = index?.let { AddressState.addresses.getOrNull(it) }
+                                AddAddressScreen(navController, addressToEdit)
+                            }
+                            composable("order_success") {
+                                OrderSuccessScreen(
+                                    navController = navController,
+                                    products = checkoutItems,
+                                    totalPrice = totalPrice
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
     }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -130,7 +152,6 @@ fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, t
         AddressState.newAddress.value = null
     }
 
-    // Chuyển đổi CartItem sang Product
     val products = remember(checkoutItems) {
         mutableStateListOf<Product>().apply {
             try {
@@ -141,7 +162,6 @@ fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, t
         }
     }
 
-    // Tính tổng giá
     val totalPrice by remember(products) {
         derivedStateOf {
             products.sumOf { product ->
@@ -162,7 +182,8 @@ fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, t
                     Text(
                         text = "Payment",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
+                        fontSize = 20.sp,
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                 },
                 navigationIcon = {
@@ -172,13 +193,13 @@ fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, t
                         Icon(
                             painter = painterResource(R.drawable.back),
                             contentDescription = "Back",
-                            modifier = Modifier.size(40.dp),
-                            tint = Color.Unspecified
+                            modifier = Modifier.size(24.dp),
+                            tint = MaterialTheme.colorScheme.onBackground
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.background
                 )
             )
         },
@@ -196,13 +217,13 @@ fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, t
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.White)
+                    .background(MaterialTheme.colorScheme.background)
                     .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "Không có sản phẩm để thanh toán",
-                    color = Color.Black,
+                    color = MaterialTheme.colorScheme.onBackground,
                     fontSize = 16.sp,
                     textAlign = TextAlign.Center
                 )
@@ -211,7 +232,7 @@ fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, t
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.White)
+                    .background(MaterialTheme.colorScheme.background)
                     .padding(paddingValues),
             ) {
                 item {
@@ -257,7 +278,7 @@ fun ShippingInfo(selectedAddress: Address?, onAddressClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.background)
             .padding(bottom = 8.dp)
     ) {
         TextField(
@@ -265,14 +286,13 @@ fun ShippingInfo(selectedAddress: Address?, onAddressClick: () -> Unit) {
             onValueChange = { /* Không cho chỉnh sửa trực tiếp */ },
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFFF6F6F6), RoundedCornerShape(8.dp))
-                .padding(16.dp)
+                .background(MaterialTheme.colorScheme.background, RoundedCornerShape(8.dp))
                 .clickable { onAddressClick() },
-            textStyle = LocalTextStyle.current.copy(color = Color.Black, fontSize = 14.sp),
+            textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onBackground, fontSize = 14.sp),
             enabled = false,
             colors = TextFieldDefaults.colors(
-                disabledContainerColor = Color(0xFFF5F5F5),
-                disabledTextColor = Color.Black,
+                disabledContainerColor = MaterialTheme.colorScheme.surface,
+                disabledTextColor = MaterialTheme.colorScheme.onSurface,
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent
             )
@@ -286,20 +306,18 @@ fun AddressListScreen(navController: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Địa chỉ của bạn", color = Color.Black) },
+                title = { Text("Địa chỉ của bạn", color = MaterialTheme.colorScheme.onBackground) },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        (navController.context as? ComponentActivity)?.finish()
-                    }) {
+                    IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             painter = painterResource(R.drawable.back),
                             contentDescription = "Back",
-                            modifier = Modifier.size(40.dp),
-                            tint = Color.Unspecified
+                            modifier = Modifier.size(24.dp),
+                            tint = MaterialTheme.colorScheme.onBackground
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         },
         bottomBar = {
@@ -310,14 +328,14 @@ fun AddressListScreen(navController: NavController) {
                     .padding(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF0000))
             ) {
-                Text("Thêm địa chỉ mới", color = Color.White, fontSize = 16.sp)
+                Text("Thêm địa chỉ mới", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp)
             }
         }
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.White)
+                .background(MaterialTheme.colorScheme.background)
                 .padding(paddingValues),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
@@ -326,9 +344,9 @@ fun AddressListScreen(navController: NavController) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .border(
-                        width = 1.dp,
-                        color = Color.Black,
-                        shape = RoundedCornerShape(8.dp)
+                            width = 1.dp,
+                            color = Color.Black,
+                            shape = RoundedCornerShape(8.dp)
                         )
                         .background(Color.White, RoundedCornerShape(8.dp))
                         .padding(16.dp),
@@ -346,18 +364,18 @@ fun AddressListScreen(navController: NavController) {
                     ) {
                         Text(
                             text = address.name,
-                            color = Color.Black,
+                            color = MaterialTheme.colorScheme.onBackground,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = address.phone,
-                            color = Color.Black,
+                            color = MaterialTheme.colorScheme.onBackground,
                             fontSize = 14.sp
                         )
                         Text(
                             text = address.addressDetail,
-                            color = Color.Black,
+                            color = MaterialTheme.colorScheme.onBackground,
                             fontSize = 14.sp
                         )
                         if (address.isDefault) {
@@ -388,7 +406,6 @@ fun AddressListScreen(navController: NavController) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddAddressScreen(navController: NavController, addressToEdit: Address?) {
-    // Nếu addressToEdit không null, điền thông tin hiện tại để chỉnh sửa
     var newName by remember { mutableStateOf(addressToEdit?.name ?: "") }
     var newPhone by remember { mutableStateOf(addressToEdit?.phone ?: "") }
     var newProvince by remember { mutableStateOf(addressToEdit?.addressDetail?.split(", ")?.getOrNull(3) ?: "") }
@@ -399,7 +416,7 @@ fun AddAddressScreen(navController: NavController, addressToEdit: Address?) {
 
     val isNameValid = newName.isNotBlank()
     val isPhoneValid = newPhone.isNotBlank() && newPhone.length == 10 && newPhone.startsWith("0") && newPhone.all { it.isDigit() }
-    val isProvinceValid = newProvince.isNotBlank()
+    var isProvinceValid = newProvince.isNotBlank()
     val isDistrictValid = newDistrict.isNotBlank()
     val isWardValid = newWard.isNotBlank()
     val isAddressDetailValid = newAddressDetail.isNotBlank()
@@ -408,20 +425,18 @@ fun AddAddressScreen(navController: NavController, addressToEdit: Address?) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (addressToEdit == null) "Thêm địa chỉ mới" else "Chỉnh sửa địa chỉ", color = Color.Black) },
+                title = { Text(if (addressToEdit == null) "Thêm địa chỉ mới" else "Chỉnh sửa địa chỉ", color = MaterialTheme.colorScheme.onBackground) },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        (navController.context as? ComponentActivity)?.finish()
-                    }) {
+                    IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             painter = painterResource(R.drawable.back),
                             contentDescription = "Back",
-                            modifier = Modifier.size(40.dp),
-                            tint = Color.Unspecified
+                            modifier = Modifier.size(24.dp),
+                            tint = MaterialTheme.colorScheme.onBackground
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         },
         bottomBar = {
@@ -436,12 +451,10 @@ fun AddAddressScreen(navController: NavController, addressToEdit: Address?) {
                     )
                     Log.d("AddAddressScreen", "Bước 2: Địa chỉ đã cập nhật: $updatedAddress")
                     if (addressToEdit == null) {
-                        // Thêm mới
                         AddressState.newAddress.value = updatedAddress
                         Log.d("AddAddressScreen", "Bước 3: Đã lưu new_address vào AddressState: ${AddressState.newAddress.value}")
                         navController.popBackStack("payment", inclusive = false)
                     } else {
-                        // Chỉnh sửa
                         val index = AddressState.addresses.indexOf(addressToEdit)
                         if (index != -1) {
                             if (updatedAddress.isDefault) {
@@ -461,32 +474,32 @@ fun AddAddressScreen(navController: NavController, addressToEdit: Address?) {
                     .padding(16.dp),
                 enabled = isFormValid,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isFormValid) Color(0xFFFF0000) else Color.Gray,
-                    disabledContainerColor = Color.Gray
+                    containerColor = if (isFormValid) Color(0xFFFF0000) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                 )
             ) {
-                Text("Lưu", color = Color.White, fontSize = 16.sp)
+                Text("Lưu", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp)
             }
         }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.White)
+                .background(MaterialTheme.colorScheme.background)
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
             TextField(
                 value = newName,
                 onValueChange = { newName = it },
-                label = { Text("Tên", color = Color.Black) },
+                label = { Text("Tên", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                 modifier = Modifier.fillMaxWidth(),
-                textStyle = LocalTextStyle.current.copy(color = Color.Black),
+                textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface),
                 colors = TextFieldDefaults.colors(
-                    disabledContainerColor = Color(0xFFF5F5F5),
-                    disabledTextColor = Color.Black,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                    unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             )
             if (!isNameValid && newName.isEmpty()) {
@@ -502,14 +515,14 @@ fun AddAddressScreen(navController: NavController, addressToEdit: Address?) {
             TextField(
                 value = newPhone,
                 onValueChange = { newPhone = it },
-                label = { Text("Số điện thoại", color = Color.Black) },
+                label = { Text("Số điện thoại", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                 modifier = Modifier.fillMaxWidth(),
-                textStyle = LocalTextStyle.current.copy(color = Color.Black),
+                textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface),
                 colors = TextFieldDefaults.colors(
-                    disabledContainerColor = Color(0xFFF5F5F5),
-                    disabledTextColor = Color.Black,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                    unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             )
             if (!isPhoneValid) {
@@ -529,61 +542,93 @@ fun AddAddressScreen(navController: NavController, addressToEdit: Address?) {
             TextField(
                 value = newProvince,
                 onValueChange = { newProvince = it },
-                label = { Text("Tỉnh/Thành phố", color = Color.Black) },
+                label = { Text("Tỉnh/Thành phố", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                 modifier = Modifier.fillMaxWidth(),
-                textStyle = LocalTextStyle.current.copy(color = Color.Black),
+                textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface),
                 colors = TextFieldDefaults.colors(
-                    disabledContainerColor = Color(0xFFF5F5F5),
-                    disabledTextColor = Color.Black,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                    unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             )
+            if (!isProvinceValid && newProvince.isEmpty()) {
+                Text(
+                    text = "Vui lòng nhập Tỉnh/Thành phố",
+                    color = Color(0xFFFF0000),
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                )
+            }
             Spacer(modifier = Modifier.height(8.dp))
 
             TextField(
                 value = newDistrict,
                 onValueChange = { newDistrict = it },
-                label = { Text("Quận/Huyện", color = Color.Black) },
+                label = { Text("Quận/Huyện", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                 modifier = Modifier.fillMaxWidth(),
-                textStyle = LocalTextStyle.current.copy(color = Color.Black),
+                textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface),
                 colors = TextFieldDefaults.colors(
-                    disabledContainerColor = Color(0xFFF5F5F5),
-                    disabledTextColor = Color.Black,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                    unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             )
+            if (!isDistrictValid && newDistrict.isEmpty()) {
+                Text(
+                    text = "Vui lòng nhập Quận/Huyện",
+                    color = Color(0xFFFF0000),
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                )
+            }
             Spacer(modifier = Modifier.height(8.dp))
 
             TextField(
                 value = newWard,
                 onValueChange = { newWard = it },
-                label = { Text("Phường/Xã", color = Color.Black) },
+                label = { Text("Phường/Xã", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                 modifier = Modifier.fillMaxWidth(),
-                textStyle = LocalTextStyle.current.copy(color = Color.Black),
+                textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface),
                 colors = TextFieldDefaults.colors(
-                    disabledContainerColor = Color(0xFFF5F5F5),
-                    disabledTextColor = Color.Black,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                    unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             )
+            if (!isWardValid && newWard.isEmpty()) {
+                Text(
+                    text = "Vui lòng nhập Phường/Xã",
+                    color = Color(0xFFFF0000),
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                )
+            }
             Spacer(modifier = Modifier.height(8.dp))
 
             TextField(
                 value = newAddressDetail,
                 onValueChange = { newAddressDetail = it },
-                label = { Text("Địa chỉ cụ thể", color = Color.Black) },
+                label = { Text("Địa chỉ cụ thể", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                 modifier = Modifier.fillMaxWidth(),
-                textStyle = LocalTextStyle.current.copy(color = Color.Black),
+                textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface),
                 colors = TextFieldDefaults.colors(
-                    disabledContainerColor = Color(0xFFF5F5F5),
-                    disabledTextColor = Color.Black,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                    unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             )
+            if (!isAddressDetailValid && newAddressDetail.isEmpty()) {
+                Text(
+                    text = "Vui lòng nhập địa chỉ cụ thể",
+                    color = Color(0xFFFF0000),
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                )
+            }
             Spacer(modifier = Modifier.height(8.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -592,10 +637,10 @@ fun AddAddressScreen(navController: NavController, addressToEdit: Address?) {
                     onCheckedChange = { isDefault = it },
                     colors = CheckboxDefaults.colors(
                         checkedColor = Color(0xFFFF0000),
-                        uncheckedColor = Color.Red
+                        uncheckedColor = MaterialTheme.colorScheme.onSurface
                     )
                 )
-                Text("Đặt làm mặc định", color = Color.Black)
+                Text("Đặt làm mặc định", color = MaterialTheme.colorScheme.onBackground)
             }
         }
     }
@@ -606,12 +651,17 @@ fun StoreHeader() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFFF6F6F6))
+            .background(MaterialTheme.colorScheme.surface)
             .padding(16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = "APPLE STORE", color = Color.Black, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Text(
+            text = "APPLE STORE",
+            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 
@@ -620,18 +670,10 @@ fun ProductItem(product: Product, onQuantityChange: (Int) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFFF6F6F6))
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .border(
-                width = 1.dp,
-                color = Color.Black,
-                shape = RoundedCornerShape(8.dp)
-            )
-            .background(Color(0xFFF6F6F6), RoundedCornerShape(8.dp))
-            .padding(16.dp),
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Hiển thị hình ảnh sản phẩm
         Box(
             modifier = Modifier
                 .width(100.dp)
@@ -645,8 +687,7 @@ fun ProductItem(product: Product, onQuantityChange: (Int) -> Unit) {
                 .background(Color.White, RoundedCornerShape(8.dp))
                 .padding(16.dp),
             contentAlignment = Alignment.Center
-        )
-        {
+        ) {
             if (product.imageUrl != null && product.imageUrl.isNotEmpty()) {
                 var isImageLoading by remember(product.imageUrl) { mutableStateOf(true) }
                 var isImageError by remember(product.imageUrl) { mutableStateOf(false) }
@@ -673,18 +714,18 @@ fun ProductItem(product: Product, onQuantityChange: (Int) -> Unit) {
                     Text(
                         text = "Đang tải...",
                         fontSize = 12.sp,
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
-                            .background(Color.White.copy(alpha = 0.7f))
+                            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.7f))
                             .padding(2.dp)
                     )
                 } else if (isImageError) {
                     Text(
                         text = "Lỗi",
                         fontSize = 12.sp,
-                        color = Color.Red,
+                        color = Color(0xFFFF0000),
                         modifier = Modifier
-                            .background(Color.White.copy(alpha = 0.7f))
+                            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.7f))
                             .padding(2.dp)
                     )
                 }
@@ -705,7 +746,7 @@ fun ProductItem(product: Product, onQuantityChange: (Int) -> Unit) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = product.name,
-                color = Color.Black,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 14.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -716,7 +757,9 @@ fun ProductItem(product: Product, onQuantityChange: (Int) -> Unit) {
                 fontSize = 12.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.background(Color(0xFF3A3A3A), RoundedCornerShape(4.dp)).padding(horizontal = 4.dp, vertical = 2.dp)
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f), RoundedCornerShape(4.dp))
+                    .padding(horizontal = 4.dp, vertical = 2.dp)
             )
             Text(
                 text = "${DecimalFormat("#,###").format(product.price.toInt())}đ",
@@ -731,17 +774,17 @@ fun ProductItem(product: Product, onQuantityChange: (Int) -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 8.dp)) {
             Text(
                 text = "-",
-                color = Color.Black,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(4.dp).clickable { onQuantityChange(product.quantity - 1) }
             )
             Text(
                 text = product.quantity.toString(),
-                color = Color.Black,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(horizontal = 8.dp)
             )
             Text(
                 text = "+",
-                color = Color.Black,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(4.dp).clickable { onQuantityChange(product.quantity + 1) }
             )
         }
@@ -751,345 +794,22 @@ fun ProductItem(product: Product, onQuantityChange: (Int) -> Unit) {
 @Composable
 fun PaymentMethod() {
     var selectedMethod by remember { mutableStateOf("Thanh toán khi nhận hàng") }
-    Column(modifier = Modifier.fillMaxWidth().background(Color.White).padding(16.dp)) {
-        Text(text = "Phương thức thanh toán", color = Color.Black, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Phương thức thanh toán",
+            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold
+        )
         Spacer(modifier = Modifier.height(12.dp))
         PaymentOption("Thanh toán khi nhận hàng", selectedMethod == "Thanh toán khi nhận hàng") { selectedMethod = "Thanh toán khi nhận hàng" }
         PaymentOption("Thẻ tín dụng", selectedMethod == "Thẻ tín dụng") { selectedMethod = "Thẻ tín dụng" }
         PaymentOption("Ví Momo", selectedMethod == "Ví Momo") { selectedMethod = "Ví Momo" }
         PaymentOption("ZaloPay", selectedMethod == "ZaloPay") { selectedMethod = "ZaloPay" }
-    }
-}
-
-@Composable
-fun PaymentOption(name: String, isSelected: Boolean, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(if (isSelected) Color.White else Color(0xFFF6F6F6))
-            .clickable { onClick() }
-            .padding(12.dp)
-            .border(
-                width = 0.2.dp,
-                color = Color.Black,
-                shape = RoundedCornerShape(8.dp)
-            ).background(Color(0xFFF6F6F6), RoundedCornerShape(8.dp))
-            .padding(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = name,
-            color = if (isSelected) Color.Red else Color.Black,
-            fontSize = 14.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-        )
-    }
-}
-
-@Composable
-fun TotalAndCheckoutButton(
-    productsSize: Int,
-    totalPrice: Double,
-    products: List<Product>,
-    selectedAddress: Address?,
-    navController: NavController
-) {
-    val formatter = DecimalFormat("#,###")
-    val formattedTotal = "${formatter.format(totalPrice.toInt())}đ"
-    val context = LocalContext.current
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.White)
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Column {
-            Text(text = "Tổng: " + formattedTotal, color = Color(0xFFFF0000), fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Text(text = "($productsSize sản phẩm)", color = Color.Black, fontSize = 14.sp)
-        }
-        Button(
-            onClick = {
-                // Kiểm tra xem đã chọn địa chỉ chưa
-                if (selectedAddress == null) {
-                    android.widget.Toast.makeText(context, "Vui lòng chọn địa chỉ giao hàng", android.widget.Toast.LENGTH_SHORT).show()
-                    return@Button
-                }
-
-                // Lấy userId từ Firebase Authentication
-                val userId = FirebaseAuth.getInstance().currentUser?.uid
-                if (userId == null) {
-                    android.widget.Toast.makeText(context, "Vui lòng đăng nhập để đặt hàng", android.widget.Toast.LENGTH_SHORT).show()
-                    return@Button
-                }
-
-                // Tạo ID đơn hàng ngắn
-                val timestamp = System.currentTimeMillis()
-                val random = (Math.random() * 1000).toInt()
-                val orderId = "${timestamp.toString().takeLast(6)}${random.toString().padStart(3, '0')}"
-
-                // Tạo dữ liệu đơn hàng
-                val order = mapOf(
-                    "orderId" to orderId,
-                    "address" to mapOf(
-                        "name" to selectedAddress.name,
-                        "phone" to selectedAddress.phone,
-                        "addressDetail" to selectedAddress.addressDetail,
-                        "isDefault" to selectedAddress.isDefault
-                    ),
-                    "products" to products.map { product ->
-                        mapOf(
-                            "name" to product.name,
-                            "color" to product.color,
-                            "price" to product.price,
-                            "quantity" to product.quantity,
-                            "imageUrl" to product.imageUrl
-                        )
-                    },
-                    "totalPrice" to totalPrice,
-                    "status" to "pending",
-                    "createdAt" to timestamp
-                )
-
-                // Lưu vào Realtime Database
-                val database = FirebaseDatabase.getInstance()
-                val ordersRef = database.getReference("orders").child(userId)
-                val newOrderRef = ordersRef.child(orderId) // Sử dụng orderId làm key
-
-                newOrderRef.setValue(order)
-                    .addOnSuccessListener {
-                        // Xóa các sản phẩm đã thanh toán khỏi giỏ hàng
-                        val cartRef = database.getReference("Cart").child(userId).child("items")
-                        products.forEach { product ->
-                            cartRef.orderByChild("title").equalTo(product.name)
-                                .addListenerForSingleValueEvent(object : ValueEventListener {
-                                    override fun onDataChange(snapshot: DataSnapshot) {
-                                        for (itemSnapshot in snapshot.children) {
-                                            itemSnapshot.ref.removeValue()
-                                        }
-                                    }
-
-                                    override fun onCancelled(error: DatabaseError) {
-                                        Log.e("TotalAndCheckoutButton", "Error removing cart item: ${error.message}")
-                                    }
-                                })
-                        }
-                        
-                        android.widget.Toast.makeText(context, "Đặt hàng thành công!", android.widget.Toast.LENGTH_SHORT).show()
-                        navController.navigate("order_success")
-                    }
-                    .addOnFailureListener { e ->
-                        android.widget.Toast.makeText(context, "Lỗi khi đặt hàng: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
-                        Log.e("TotalAndCheckoutButton", "Error saving order: ${e.message}", e)
-                    }
-            },
-            modifier = Modifier
-                .height(48.dp)
-                .clip(RoundedCornerShape(8.dp)),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF0000))
-        ) {
-            Text(text = "Đặt hàng", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun OrderSuccessScreen(
-    navController: NavController,
-    products: List<CartItem>,
-    totalPrice: Double
-) {
-    var orderAddress by remember { mutableStateOf<Address?>(null) }
-
-    // Truy xuất đơn hàng mới nhất từ Firebase
-    LaunchedEffect(Unit) {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid
-        if (userId != null) {
-            val database = FirebaseDatabase.getInstance()
-            val ordersRef = database.getReference("orders").child(userId)
-            ordersRef.orderByChild("createdAt").limitToLast(1)
-                .addListenerForSingleValueEvent(object : ValueEventListener {
-                    override fun onDataChange(snapshot: DataSnapshot) {
-                        for (orderSnapshot in snapshot.children) {
-                            val addressMap = orderSnapshot.child("address").value as? Map<String, Any>
-                            addressMap?.let {
-                                orderAddress = Address(
-                                    name = it["name"] as? String ?: "",
-                                    phone = it["phone"] as? String ?: "",
-                                    addressDetail = it["addressDetail"] as? String ?: "",
-                                    isDefault = it["isDefault"] as? Boolean ?: false
-                                )
-                                Log.d("OrderSuccessScreen", "Fetched address from Firebase: $orderAddress")
-                            }
-                        }
-                    }
-
-                    override fun onCancelled(error: DatabaseError) {
-                        Log.e("OrderSuccessScreen", "Error fetching order: ${error.message}")
-                    }
-                })
-        }
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Xử lý đơn hàng", color = Color.Black,fontWeight = FontWeight.Bold, fontSize = 20.sp ) },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        (navController.context as? ComponentActivity)?.finish()
-                    }) {
-                        Icon(
-                            painter = painterResource(R.drawable.back),
-                            contentDescription = "Back",
-                            modifier = Modifier.size(40.dp),
-                            tint = Color.Unspecified
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
-            )
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.White)
-                .padding(paddingValues)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.successful),
-                contentDescription = "Success",
-                tint = Color.Unspecified,
-                modifier = Modifier
-                    .size(100.dp)
-                    .padding(16.dp)
-            )
-
-            Text(
-                text = "Đặt hàng thành công!",
-                color = Color(0xFF00C853),
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 24.dp)
-            )
-
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF1C2526))
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Text(
-                        text = "Chi tiết đơn hàng",
-                        color = Color.White,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-
-                    orderAddress?.let {
-                        Text(
-                            text = "Địa chỉ giao hàng:",
-                            color = Color(0xFFAAAAAA),
-                            fontSize = 14.sp
-                        )
-                        Text(
-                            text = "${it.name}\n${it.phone}\n${it.addressDetail}",
-                            color = Color.White,
-                            fontSize = 14.sp,
-                            modifier = Modifier.padding(bottom = 16.dp)
-                        )
-                    } ?: Text(
-                        text = "Đang tải địa chỉ giao hàng...",
-                        color = Color(0xFFAAAAAA),
-                        fontSize = 14.sp,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-
-                    Text(
-                        text = "Sản phẩm:",
-                        color = Color(0xFFAAAAAA),
-                        fontSize = 14.sp,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    products.forEach { product ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "${product.title} x${product.quantity}",
-                                color = Color.White,
-                                fontSize = 14.sp,
-                                modifier = Modifier.weight(1f)
-                            )
-                            Text(
-                                text = "${DecimalFormat("#,###").format(product.price.toInt() * product.quantity)}đ",
-                                color = Color(0xFFFF0000),
-                                fontSize = 14.sp
-                            )
-                        }
-                    }
-
-                    Divider(
-                        color = Color(0xFF3A3A3A),
-                        modifier = Modifier.padding(vertical = 16.dp)
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "Tổng cộng:",
-                            color = Color.White,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "${DecimalFormat("#,###").format(totalPrice.toInt())}đ",
-                            color = Color(0xFFFF0000),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-
-            Button(
-                onClick = {
-                    val intent = Intent(navController.context, MainActivity::class.java).apply {
-                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                    }
-                    navController.context.startActivity(intent)
-                    (navController.context as? ComponentActivity)?.finish()
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 24.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF0000))
-            ) {
-                Text(
-                    text = "Trở về trang chủ",
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
     }
 }

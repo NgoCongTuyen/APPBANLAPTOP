@@ -6,6 +6,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModelProvider
 import com.example.appbanlaptop.Admin.AdminActivity
 import com.example.appbanlaptop.MainActivity
@@ -57,6 +58,7 @@ class LoginActivity : ComponentActivity() {
 
         setContent {
             APPBANLAPTOPTheme {
+                val context = LocalContext.current
                 LoginScreen(
                     viewModel = viewModel,
                     onLoginSuccess = {
@@ -64,7 +66,7 @@ class LoginActivity : ComponentActivity() {
                         user?.let {
                             checkUserRoleAndNavigate(it.uid)
                         } ?: run {
-                            Toast.makeText(this, "Login failed: User not found", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this, "Đăng nhập thất bại: Không tìm thấy người dùng", Toast.LENGTH_SHORT).show()
                         }
                     },
                     onSignUpClicked = {
@@ -80,13 +82,14 @@ class LoginActivity : ComponentActivity() {
                         // Đăng xuất khỏi Google Sign-In và thu hồi quyền truy cập
                         googleSignInClient.signOut().addOnCompleteListener {
                             googleSignInClient.revokeAccess().addOnCompleteListener {
-                                Toast.makeText(this, "Logged out successfully", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this, "Đã đăng xuất thành công", Toast.LENGTH_SHORT).show()
                                 // Khởi động lại LoginActivity
                                 startActivity(Intent(this, LoginActivity::class.java))
                                 finish()
                             }
                         }
-                    }
+                    },
+//                    context = context
                 )
             }
         }
@@ -117,8 +120,8 @@ class LoginActivity : ComponentActivity() {
                                         checkUserRoleAndNavigate(user.uid)
                                     }
                                     .addOnFailureListener { e ->
-                                        viewModel.errorMessage.value = "Failed to save user data: ${e.message}"
-                                        Toast.makeText(this, "Failed to save user data: ${e.message}", Toast.LENGTH_SHORT).show()
+                                        viewModel.errorMessage.value = "Không thể lưu dữ liệu người dùng: ${e.message}"
+                                        Toast.makeText(this, "Không thể lưu dữ liệu người dùng: ${e.message}", Toast.LENGTH_SHORT).show()
                                         // Vẫn điều hướng để không làm gián đoạn trải nghiệm
                                         checkUserRoleAndNavigate(user.uid)
                                     }
@@ -127,19 +130,19 @@ class LoginActivity : ComponentActivity() {
                                 checkUserRoleAndNavigate(user.uid)
                             }
                         }.addOnFailureListener { e ->
-                            viewModel.errorMessage.value = "Failed to check user data: ${e.message}"
-                            Toast.makeText(this, "Failed to check user data: ${e.message}", Toast.LENGTH_SHORT).show()
+                            viewModel.errorMessage.value = "Không thể kiểm tra dữ liệu người dùng: ${e.message}"
+                            Toast.makeText(this, "Không thể kiểm tra dữ liệu người dùng: ${e.message}", Toast.LENGTH_SHORT).show()
                             // Điều hướng mặc định đến MainActivity
                             startActivity(Intent(this, MainActivity::class.java))
                             finish()
                         }
                     } ?: run {
-                        viewModel.errorMessage.value = "User not found after authentication"
-                        Toast.makeText(this, "User not found after authentication", Toast.LENGTH_SHORT).show()
+                        viewModel.errorMessage.value = "Không tìm thấy người dùng sau khi xác thực"
+                        Toast.makeText(this, "Không tìm thấy người dùng sau khi xác thực", Toast.LENGTH_SHORT).show()
                     }
                 } else {
-                    viewModel.errorMessage.value = "Authentication failed: ${task.exception?.message}"
-                    Toast.makeText(this, "Authentication failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                    viewModel.errorMessage.value = "Xác thực thất bại: ${task.exception?.message}"
+                    Toast.makeText(this, "Xác thực thất bại: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
                 }
             }
     }
@@ -159,10 +162,10 @@ class LoginActivity : ComponentActivity() {
             if (snapshot.exists()) {
                 val role = snapshot.child("role").getValue(String::class.java) ?: "user"
                 if (role == "admin") {
-                    Toast.makeText(this, "Welcome Admin!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Chào mừng Admin!", Toast.LENGTH_SHORT).show()
                     startActivity(Intent(this, AdminActivity::class.java))
                 } else {
-                    Toast.makeText(this, "Welcome User!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Chào mừng Người dùng!", Toast.LENGTH_SHORT).show()
                     startActivity(Intent(this, MainActivity::class.java))
                 }
             } else {
@@ -176,10 +179,10 @@ class LoginActivity : ComponentActivity() {
                         "role" to "user"
                     )
                     userRef.setValue(userData).addOnSuccessListener {
-                        Toast.makeText(this, "Welcome User!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, "Chào mừng Người dùng!", Toast.LENGTH_SHORT).show()
                         startActivity(Intent(this, MainActivity::class.java))
                     }.addOnFailureListener { e ->
-                        Toast.makeText(this, "Failed to create user data: ${e.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, "Không thể tạo dữ liệu người dùng: ${e.message}", Toast.LENGTH_SHORT).show()
                         // Điều hướng mặc định đến MainActivity
                         startActivity(Intent(this, MainActivity::class.java))
                     }
@@ -187,7 +190,7 @@ class LoginActivity : ComponentActivity() {
             }
             finish()
         }.addOnFailureListener { e ->
-            Toast.makeText(this, "Failed to retrieve user role: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Không thể lấy vai trò người dùng: ${e.message}", Toast.LENGTH_SHORT).show()
             // Điều hướng mặc định đến MainActivity nếu không lấy được role
             startActivity(Intent(this, MainActivity::class.java))
             finish()
