@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import com.example.appbanlaptop.Activity.BottomActivity.BottomMenu
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,6 +25,7 @@ import com.example.appbanlaptop.CategoryItem
 import com.example.appbanlaptop.Model.ProductItem
 import com.example.appbanlaptop.ProductItem
 import com.example.appbanlaptop.R
+import com.example.appbanlaptop.cart.CartScreenActivity
 import com.google.firebase.database.*
 
 class ListItemActivity : ComponentActivity() {
@@ -116,7 +118,16 @@ fun ListItemScreen(categoryId: String, onBackClick: () -> Unit) {
                 backgroundColor = Color(0xFF6200EE),
                 contentColor = Color.White
             )
+        },
+        bottomBar = {
+            BottomMenu(
+                onItemClick = {
+                    // Điều hướng đến CartScreenActivity
+                    context.startActivity(Intent(context, CartScreenActivity::class.java))
+                }
+            )
         }
+
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
