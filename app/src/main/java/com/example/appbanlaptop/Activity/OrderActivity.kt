@@ -352,10 +352,16 @@ fun OrderDetailScreen(order: Order, onBackClick: () -> Unit) {
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp
                     )
+
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Text("<", color = Color.Black, fontSize = 20.sp)
+                    androidx.compose.material.IconButton(onClick = onBackClick) {
+                        androidx.compose.material.Icon(
+                            painter = painterResource(R.drawable.back),
+                            contentDescription = "Back",
+                            modifier = Modifier.size(40.dp),
+                            tint = Color.Unspecified
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
