@@ -928,7 +928,7 @@ fun OrderSuccessScreen(
             )
         }
     ) { paddingValues ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
@@ -936,135 +936,144 @@ fun OrderSuccessScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(
-                painter = painterResource(id = R.drawable.successful),
-                contentDescription = "Success",
-                tint = Color.Unspecified,
-                modifier = Modifier
-                    .size(100.dp)
-                    .padding(16.dp)
-            )
+            item {
+                Icon(
+                    painter = painterResource(id = R.drawable.successful),
+                    contentDescription = "Success",
+                    tint = Color.Unspecified,
+                    modifier = Modifier
+                        .size(100.dp)
+                        .padding(16.dp)
+                )
 
-            Text(
-                text = "Đặt hàng thành công!",
-                color = Color(0xFF00C853),
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 24.dp)
-            )
+                Text(
+                    text = "Đặt hàng thành công!",
+                    color = Color(0xFF00C853),
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 24.dp)
+                )
+            }
 
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Column(
+            item {
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
+                        .padding(vertical = 8.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
-                    Text(
-                        text = "Chi tiết đơn hàng",
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-
-                    orderAddress?.let {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
                         Text(
-                            text = "Địa chỉ giao hàng:",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 14.sp
-                        )
-                        Text(
-                            text = "${it.name}\n${it.phone}\n${it.addressDetail}",
+                            text = "Chi tiết đơn hàng",
                             color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+
+                        orderAddress?.let {
+                            Text(
+                                text = "Địa chỉ giao hàng:",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 14.sp
+                            )
+                            Text(
+                                text = "${it.name}\n${it.phone}\n${it.addressDetail}",
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 14.sp,
+                                modifier = Modifier.padding(bottom = 16.dp)
+                            )
+                        } ?: Text(
+                            text = "Đang tải địa chỉ giao hàng...",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 14.sp,
                             modifier = Modifier.padding(bottom = 16.dp)
                         )
-                    } ?: Text(
-                        text = "Đang tải địa chỉ giao hàng...",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 14.sp,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
 
-                    Text(
-                        text = "Sản phẩm:",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 14.sp,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    products.forEach { product ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "${product.title} x${product.quantity}",
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontSize = 14.sp,
-                                modifier = Modifier.weight(1f)
-                            )
-                            Text(
-                                text = "${DecimalFormat("#,###").format(product.price.toInt() * product.quantity)}đ",
-                                color = Color(0xFFFF0000),
-                                fontSize = 14.sp
-                            )
-                        }
-                    }
-
-                    Divider(
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
-                        modifier = Modifier.padding(vertical = 16.dp)
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
                         Text(
-                            text = "Tổng cộng:",
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "${DecimalFormat("#,###").format(totalPrice.toInt())}đ",
-                            color = Color(0xFFFF0000),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
+                            text = "Sản phẩm:",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(bottom = 8.dp)
                         )
                     }
                 }
             }
 
-            Button(
-                onClick = {
-                    val intent = Intent(navController.context, MainActivity::class.java).apply {
-                        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                    }
-                    navController.context.startActivity(intent)
-                    (navController.context as? ComponentActivity)?.finish()
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 24.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFFF0000),
-                    contentColor = MaterialTheme.colorScheme.onPrimary
+            items(products) { product ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "${product.title} x${product.quantity}",
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 14.sp,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = "${DecimalFormat("#,###").format(product.price.toInt() * product.quantity)}đ",
+                        color = Color(0xFFFF0000),
+                        fontSize = 14.sp
+                    )
+                }
+            }
+
+            item {
+                Divider(
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+                    modifier = Modifier.padding(vertical = 16.dp)
                 )
-            ) {
-                Text(
-                    text = "Trở về trang chủ",
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Tổng cộng:",
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "${DecimalFormat("#,###").format(totalPrice.toInt())}đ",
+                        color = Color(0xFFFF0000),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            item {
+                Button(
+                    onClick = {
+                        val intent = Intent(navController.context, MainActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        }
+                        navController.context.startActivity(intent)
+                        (navController.context as? ComponentActivity)?.finish()
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFFF0000),
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    Text(
+                        text = "Trở về trang chủ",
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }
