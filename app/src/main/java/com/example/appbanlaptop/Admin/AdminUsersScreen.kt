@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
@@ -26,9 +25,7 @@ fun AdminUsersScreen(modifier: Modifier = Modifier) {
     val users by UserManager.usersFlow.collectAsState()
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var showAddDialog by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
-    var newUserUid by remember { mutableStateOf("") }
     var newUserDisplayName by remember { mutableStateOf("") }
     var newUserEmail by remember { mutableStateOf("") }
     var newUserRole by remember { mutableStateOf("user") }
@@ -192,6 +189,8 @@ fun AdminUsersScreen(modifier: Modifier = Modifier) {
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
+                        .navigationBarsPadding(),
+                    contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
                     item {
                         Card(
@@ -231,7 +230,6 @@ fun AdminUsersScreen(modifier: Modifier = Modifier) {
                             },
                             onEdit = {
                                 editingUser = user
-                                newUserUid = user.uid ?: ""
                                 newUserDisplayName = user.displayName ?: ""
                                 newUserEmail = user.email ?: ""
                                 newUserRole = user.role ?: "user"
@@ -242,106 +240,6 @@ fun AdminUsersScreen(modifier: Modifier = Modifier) {
                 }
             }
         }
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp),
-            contentAlignment = Alignment.BottomEnd
-        ) {
-            FloatingActionButton(
-                onClick = { showAddDialog = true }
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Thêm người dùng")
-            }
-        }
-    }
-
-    if (showAddDialog) {
-        AlertDialog(
-            onDismissRequest = { showAddDialog = false },
-            title = { Text("Thêm người dùng mới") },
-            text = {
-                Column {
-                    OutlinedTextField(
-                        value = newUserUid,
-                        onValueChange = { newUserUid = it },
-                        label = { Text("User UID") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = newUserDisplayName,
-                        onValueChange = { newUserDisplayName = it },
-                        label = { Text("Tên hiển thị") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = newUserEmail,
-                        onValueChange = { newUserEmail = it },
-                        label = { Text("Email") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Vai trò:", modifier = Modifier.align(Alignment.CenterVertically))
-                        RadioButton(
-                            selected = newUserRole == "user",
-                            onClick = { newUserRole = "user" }
-                        )
-                        Text("User", modifier = Modifier.align(Alignment.CenterVertically))
-                        RadioButton(
-                            selected = newUserRole == "admin",
-                            onClick = { newUserRole = "admin" }
-                        )
-                        Text("Admin", modifier = Modifier.align(Alignment.CenterVertically))
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (newUserUid.isNotBlank() && newUserDisplayName.isNotBlank() && newUserEmail.isNotBlank()) {
-                            val user = User(
-                                uid = newUserUid,
-                                displayName = newUserDisplayName,
-                                email = newUserEmail,
-                                role = newUserRole,
-                                createdAt = System.currentTimeMillis()
-                            )
-                            UserManager.addUser(
-                                user = user,
-                                onSuccess = {
-                                    Toast.makeText(context, "Đã thêm người dùng: $newUserDisplayName", Toast.LENGTH_SHORT).show()
-                                    newUserUid = ""
-                                    newUserDisplayName = ""
-                                    newUserEmail = ""
-                                    newUserRole = "user"
-                                    showAddDialog = false
-                                },
-                                onError = { error ->
-                                    Toast.makeText(context, "Lỗi: $error", Toast.LENGTH_SHORT).show()
-                                }
-                            )
-                        } else {
-                            Toast.makeText(context, "Vui lòng điền đầy đủ thông tin", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                ) {
-                    Text("Thêm")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showAddDialog = false }) {
-                    Text("Hủy")
-                }
-            }
-        )
     }
 
     if (showEditDialog && editingUser != null) {
@@ -395,7 +293,6 @@ fun AdminUsersScreen(modifier: Modifier = Modifier) {
                                 user = updatedUser,
                                 onSuccess = {
                                     Toast.makeText(context, "Đã cập nhật người dùng: $newUserDisplayName", Toast.LENGTH_SHORT).show()
-                                    newUserUid = ""
                                     newUserDisplayName = ""
                                     newUserEmail = ""
                                     newUserRole = "user"

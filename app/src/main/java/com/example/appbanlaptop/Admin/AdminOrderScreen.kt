@@ -178,7 +178,10 @@ fun AdminOrderItem(order: Order, onStatusUpdate: (String) -> Unit) {
 
     // Log để kiểm tra items
     LaunchedEffect(order) {
-        Log.d("AdminOrderItem", "Order ${order.id}: items = ${order.items}")
+        Log.d("AdminOrderItem", "Order ${order.id}: items = ${order.items?.size ?: 0}, items = ${order.items}")
+        order.items?.forEach { item ->
+            Log.d("AdminOrderItem", "Item: title=${item.title}, price=${item.price}, quantity=${item.quantity}")
+        }
     }
 
     Card(
@@ -232,18 +235,27 @@ fun AdminOrderItem(order: Order, onStatusUpdate: (String) -> Unit) {
             )
 
             // Hiển thị danh sách sản phẩm nếu showItems = true
-            if (showItems && !order.items.isNullOrEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                order.items.forEach { item ->
-                    OrderItemRow(item = item)
-                    Spacer(modifier = Modifier.height(4.dp))
+            if (showItems) {
+                if (order.items.isNullOrEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Không có sản phẩm trong đơn hàng",
+                        color = Color.Red,
+                        fontSize = 14.sp
+                    )
+                } else {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    order.items.forEach { item ->
+                        OrderItemRow(item = item)
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Tổng tiền: ${DecimalFormat("#,###").format(order.totalPrice ?: 0.0)}đ",
+                text = "Tổng tiền: ${DecimalFormat("#,###").format(order.totalPrice ?: 0L)}đ",
                 color = Color(0xFFFF0000),
                 fontWeight = FontWeight.Bold
             )
@@ -288,7 +300,7 @@ fun OrderItemRow(item: OrderItem) {
     ) {
         Column {
             Text(
-                text = "Tên: ${item.title ?: "N/A"}",
+                text = "Tên: ${item.title ?: "Không xác định"}",
                 color = Color.Black,
                 fontSize = 14.sp
             )
@@ -299,12 +311,13 @@ fun OrderItemRow(item: OrderItem) {
             )
         }
         Text(
-            text = "Giá: ${DecimalFormat("#,###").format(item.price ?: 0.0)}đ",
+            text = "Giá: ${DecimalFormat("#,###").format(item.price ?: 0L)}đ",
             color = Color.Black,
             fontSize = 14.sp
         )
     }
 }
+
 
 @Composable
 fun OrderStatusChip(status: String) {

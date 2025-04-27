@@ -11,6 +11,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -438,9 +439,10 @@ fun CategoryItem(
             modifier = Modifier
                 .size(50.dp)
                 .background(
-                    color = if (isSelected) Color(0xFF6200EE) else MaterialTheme.colorScheme.surface,
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                     shape = RoundedCornerShape(8.dp)
-                ),
+                )
+                .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f), RoundedCornerShape(8.dp)),
             contentAlignment = Alignment.Center
         ) {
             item.picUrl?.let { imageUrl ->
@@ -475,7 +477,7 @@ fun CategoryItem(
                 if (isImageLoading) {
                     Text(
                         text = "Đang tải...",
-                        fontSize = 10.sp,
+                        fontSize = 7.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
@@ -486,7 +488,7 @@ fun CategoryItem(
                     Text(
                         text = "Lỗi",
                         fontSize = 10.sp,
-                        color = Color.Red,
+                        color = MaterialTheme.colorScheme.error,
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
@@ -539,8 +541,8 @@ fun SectionTitle(title: String) {
 fun ProductItem(product: ProductItem) {
     Column(
         modifier = Modifier
-            .width(150.dp)
-            .height(220.dp)
+            .width(155.dp)
+            .height(230.dp)
             .background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(12.dp))
             .padding(14.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -608,7 +610,7 @@ fun ProductItem(product: ProductItem) {
                     painter = painterResource(R.drawable.loadding),
                     contentDescription = "Placeholder",
                     modifier = Modifier
-                        .fillMaxSize(0.9f)
+                        .fillMaxSize(0.8f)
                         .clip(RoundedCornerShape(8.dp)),
                     contentScale = ContentScale.Fit
                 )
@@ -632,7 +634,7 @@ fun ProductItem(product: ProductItem) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -656,7 +658,7 @@ fun ProductItem(product: ProductItem) {
                         append("đ")
                     }
                 },
-                fontSize = 13.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Red
             )

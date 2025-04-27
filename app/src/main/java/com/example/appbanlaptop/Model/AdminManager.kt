@@ -4,9 +4,12 @@ import android.util.Log
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.IgnoreExtraProperties
+import com.google.firebase.database.PropertyName
 import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 // Model cho User
 data class User(
@@ -26,33 +29,35 @@ data class Category(
 )
 
 // Model cho Order
-data class OrderItem(
-    val title: String? = null,
-    val price: Double? = 0.0,
-    val quantity: Int? = 0,
-    val imageUrl: String?
-)
-
+@IgnoreExtraProperties
 data class Order(
-    val id: String? = null,
-    val userId: String? = null,
-    val items: List<OrderItem>? = emptyList(),
-    val totalPrice: Double? = 0.0,
-    val status: String? = "pending",
-    val createdAt: Long? = null,
-    val shippingAddress: String? = null,
-    val recipientName: String? = null,
-    val recipientPhone: String? = null
+    @PropertyName("userId") val userId: String? = null,
+    @PropertyName("id") val id: String? = null,
+    @PropertyName("products") val items: List<OrderItem>? = null, // Ánh xạ "products" sang "items"
+    @PropertyName("totalPrice") val totalPrice: Long? = null,
+    @PropertyName("status") val status: String? = null,
+    @PropertyName("createdAt") val createdAt: Long? = null,
+    @PropertyName("shippingAddress") val shippingAddress: String? = null,
+    @PropertyName("recipientName") val recipientName: String? = null,
+    @PropertyName("recipientPhone") val recipientPhone: String? = null
 )
 
+@IgnoreExtraProperties
+data class OrderItem(
+    @PropertyName("name") val title: String? = null, // Ánh xạ "name" sang "title"
+    @PropertyName("price") val price: Long? = null,
+    @PropertyName("quantity") val quantity: Int? = null,
+    @PropertyName("imageUrl") val imageUrl: String? = null,
+    @PropertyName("color") val color: String? = null
+)
 
 object ProductManager {
     private val database = FirebaseDatabase.getInstance()
     private val productsRef = database.getReference("Items")
-    private val items = mutableListOf<ProductItem>()
     private val _itemsFlow = MutableStateFlow<List<ProductItem>>(emptyList())
-    val itemsFlow: StateFlow<List<ProductItem>> = _itemsFlow
+    val itemsFlow: StateFlow<List<ProductItem>> = _itemsFlow.asStateFlow()
     private var valueEventListener: ValueEventListener? = null
+    private var isListenerActive = false
 
     init {
         setupListener()
@@ -65,6 +70,10 @@ object ProductManager {
         newRef.setValue(productWithId)
             .addOnSuccessListener {
                 Log.d("ProductManager", "Thêm sản phẩm thành công: ${productWithId.title}")
+                // Cập nhật tạm thời _itemsFlow để giao diện phản ánh ngay
+                val currentItems = _itemsFlow.value.toMutableList()
+                currentItems.add(productWithId)
+                _itemsFlow.value = currentItems.sortedBy { it.title }
                 onSuccess()
             }
             .addOnFailureListener {
@@ -75,9 +84,17 @@ object ProductManager {
 
     fun updateProduct(product: ProductItem, onSuccess: () -> Unit, onError: (String) -> Unit) {
         product.id?.let { id ->
+            Log.d("ProductManager", "Cập nhật sản phẩm: $product")
             productsRef.child(id).setValue(product)
                 .addOnSuccessListener {
                     Log.d("ProductManager", "Cập nhật sản phẩm thành công: ${product.title}")
+                    // Cập nhật tạm thời _itemsFlow để giao diện phản ánh ngay
+                    val currentItems = _itemsFlow.value.toMutableList()
+                    val index = currentItems.indexOfFirst { it.id == product.id }
+                    if (index != -1) {
+                        currentItems[index] = product
+                        _itemsFlow.value = currentItems.sortedBy { it.title }
+                    }
                     onSuccess()
                 }
                 .addOnFailureListener {
@@ -92,9 +109,14 @@ object ProductManager {
 
     fun removeProduct(productId: String?, onSuccess: () -> Unit, onError: (String) -> Unit) {
         productId?.let { id ->
+            Log.d("ProductManager", "Xóa sản phẩm với ID: $id")
             productsRef.child(id).removeValue()
                 .addOnSuccessListener {
                     Log.d("ProductManager", "Xóa sản phẩm thành công với ID: $id")
+                    // Cập nhật tạm thời _itemsFlow để giao diện phản ánh ngay
+                    val currentItems = _itemsFlow.value.toMutableList()
+                    currentItems.removeAll { it.id == id }
+                    _itemsFlow.value = currentItems.sortedBy { it.title }
                     onSuccess()
                 }
                 .addOnFailureListener {
@@ -111,7 +133,15 @@ object ProductManager {
         valueEventListener?.let {
             productsRef.removeEventListener(it)
             valueEventListener = null
+            isListenerActive = false
             Log.d("ProductManager", "Đã dọn dẹp listener Firebase")
+        }
+        // Không đặt _itemsFlow.value = emptyList() để giữ dữ liệu cục bộ
+    }
+
+    fun ensureListener() {
+        if (!isListenerActive) {
+            setupListener()
         }
     }
 
@@ -120,7 +150,7 @@ object ProductManager {
         valueEventListener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 Log.d("ProductManager", "Nhận snapshot dữ liệu: exists=${snapshot.exists()}, childrenCount=${snapshot.childrenCount}")
-                items.clear()
+                val newItems = mutableListOf<ProductItem>()
                 if (!snapshot.exists() || snapshot.childrenCount == 0L) {
                     Log.d("ProductManager", "Không tìm thấy sản phẩm trong cơ sở dữ liệu")
                     _itemsFlow.value = emptyList()
@@ -131,7 +161,7 @@ object ProductManager {
                     try {
                         val product = item.getValue(ProductItem::class.java)?.copy(id = item.key)
                         if (product != null) {
-                            items.add(product)
+                            newItems.add(product)
                             Log.d("ProductManager", "Thêm sản phẩm: id=${product.id}, title=${product.title}")
                         } else {
                             Log.w("ProductManager", "Dữ liệu sản phẩm không hợp lệ tại key: ${item.key}")
@@ -140,34 +170,20 @@ object ProductManager {
                         Log.e("ProductManager", "Lỗi khi phân tích sản phẩm tại key: ${item.key}, lỗi: ${e.message}")
                     }
                 }
-                _itemsFlow.value = items.toList()
-                Log.d("ProductManager", "Cập nhật itemsFlow: ${items.size} sản phẩm")
+                _itemsFlow.value = newItems.sortedBy { it.title }
+                Log.d("ProductManager", "Cập nhật itemsFlow: ${newItems.size} sản phẩm")
             }
 
             override fun onCancelled(error: DatabaseError) {
                 Log.e("ProductManager", "Lỗi cơ sở dữ liệu: ${error.message}, chi tiết: ${error.details}")
-                _itemsFlow.value = emptyList()
+                // Giữ danh sách hiện tại nếu có lỗi
             }
         }
         valueEventListener?.let {
             productsRef.addValueEventListener(it)
+            isListenerActive = true
             Log.d("ProductManager", "Thiết lập listener Firebase thành công")
         }
-    }
-
-    // Thêm thuộc tính id vào ProductItem
-    private fun ProductItem.copy(id: String? = this.id): ProductItem {
-        return ProductItem(
-            categoryId = categoryId,
-            description = description,
-            model = model,
-            picUrl = picUrl,
-            price = price,
-            rating = rating,
-            showRecommended = showRecommended,
-            title = title,
-            id = id
-        )
     }
 }
 
@@ -422,6 +438,79 @@ object OrderManager {
         setupListener()
     }
 
+    private fun parseOrder(userId: String, orderSnapshot: DataSnapshot): Order? {
+        try {
+            val orderId = orderSnapshot.key ?: return null
+            Log.d("OrderManager", "Parsing order: $orderId")
+
+            // Lấy các trường cơ bản
+            val totalPriceRaw = orderSnapshot.child("totalPrice").value
+            val totalPrice = when (totalPriceRaw) {
+                is Long -> totalPriceRaw
+                is Double -> totalPriceRaw.toLong()
+                is String -> totalPriceRaw.replace("[^0-9]".toRegex(), "").toLongOrNull() ?: 0L
+                else -> 0L
+            }
+            val status = orderSnapshot.child("status").getValue(String::class.java) ?: "pending"
+            val createdAt = orderSnapshot.child("createdAt").getValue(Long::class.java) ?: 0L
+            val addressMap = orderSnapshot.child("address").value as? Map<String, Any>
+
+            // Lấy danh sách sản phẩm
+            val itemsSnapshot = orderSnapshot.child("products")
+            val itemsList = mutableListOf<OrderItem>()
+
+            if (!itemsSnapshot.exists()) {
+                Log.w("OrderManager", "No products found for order: $orderId")
+            } else {
+                for (item in itemsSnapshot.children) {
+                    try {
+                        val name = item.child("name").getValue(String::class.java) ?: "Unknown Item"
+                        val priceRaw = item.child("price").value
+                        val price = when (priceRaw) {
+                            is Long -> priceRaw
+                            is Double -> priceRaw.toLong()
+                            is String -> priceRaw.replace("[^0-9]".toRegex(), "").toLongOrNull() ?: 0L
+                            else -> 0L
+                        }
+                        val quantityRaw = item.child("quantity").value
+                        val quantity = when (quantityRaw) {
+                            is Long -> quantityRaw.toInt()
+                            is Int -> quantityRaw
+                            is Double -> quantityRaw.toInt()
+                            else -> {
+                                Log.w("OrderManager", "Invalid quantity for item in order $orderId: $quantityRaw")
+                                0
+                            }
+                        }
+                        val imageUrl = item.child("imageUrl").getValue(String::class.java)
+                        val color = item.child("color").getValue(String::class.java) ?: "Default Color"
+                        itemsList.add(OrderItem(name, price, quantity, imageUrl, color))
+                        Log.d("OrderManager", "Added item: name=$name, price=$price, quantity=$quantity, imageUrl=$imageUrl")
+                    } catch (e: Exception) {
+                        Log.e("OrderManager", "Error parsing item in order $orderId: ${e.message}")
+                    }
+                }
+            }
+
+            val order = Order(
+                id = orderId,
+                userId = userId,
+                items = itemsList,
+                totalPrice = totalPrice,
+                status = status,
+                createdAt = createdAt,
+                shippingAddress = addressMap?.get("addressDetail") as? String,
+                recipientName = addressMap?.get("name") as? String,
+                recipientPhone = addressMap?.get("phone") as? String
+            )
+            Log.d("OrderManager", "Parsed order: id=$orderId, userId=$userId, items=${itemsList.size}, totalPrice=$totalPrice, createdAt=$createdAt")
+            return order
+        } catch (e: Exception) {
+            Log.e("OrderManager", "Error parsing order: ${orderSnapshot.key}, error: ${e.message}")
+            return null
+        }
+    }
+
     private fun setupListener() {
         Log.d("OrderManager", "Setting up Firebase listener for orders")
         valueEventListener?.let { ordersRef.removeEventListener(it) }
@@ -439,58 +528,10 @@ object OrderManager {
                     val userId = userSnapshot.key ?: continue
                     Log.d("OrderManager", "Processing orders for user: $userId, ordersCount=${userSnapshot.childrenCount}")
                     for (orderSnapshot in userSnapshot.children) {
-                        try {
-                            val orderId = orderSnapshot.key ?: continue
-                            Log.d("OrderManager", "Processing order: $orderId")
-                            val totalPrice = orderSnapshot.child("totalPrice").getValue(Double::class.java) ?: 0.0
-                            val status = orderSnapshot.child("status").getValue(String::class.java) ?: "pending"
-                            val createdAt = orderSnapshot.child("createdAt").getValue(Long::class.java) ?: 0L
-                            val addressMap = orderSnapshot.child("address").value as? Map<String, Any>
-                            val itemsSnapshot = orderSnapshot.child("products")
-                            val itemsList = mutableListOf<OrderItem>()
-
-                            if (!itemsSnapshot.exists()) {
-                                Log.w("OrderManager", "No products found for order: $orderId")
-                            } else {
-                                for (item in itemsSnapshot.children) {
-                                    try {
-                                        val name = item.child("name").getValue(String::class.java)
-                                            ?: item.child("title").getValue(String::class.java)
-                                            ?: "Unknown Item"
-                                        val price = item.child("price").getValue(Double::class.java) ?: 0.0
-                                        val quantityValue = item.child("quantity").value
-                                        val quantity = when (quantityValue) {
-                                            is Long -> quantityValue.toInt()
-                                            is Int -> quantityValue
-                                            else -> {
-                                                Log.w("OrderManager", "Invalid quantity for item in order $orderId: $quantityValue")
-                                                0
-                                            }
-                                        }
-                                        val imageUrl = item.child("imageUrl").getValue(String::class.java)
-                                        itemsList.add(OrderItem(name, price, quantity, imageUrl))
-                                        Log.d("OrderManager", "Added item: name=$name, price=$price, quantity=$quantity")
-                                    } catch (e: Exception) {
-                                        Log.e("OrderManager", "Error parsing item in order $orderId: ${e.message}")
-                                    }
-                                }
-                            }
-
-                            val order = Order(
-                                id = orderId,
-                                userId = userId,
-                                items = itemsList,
-                                totalPrice = totalPrice,
-                                status = status,
-                                createdAt = createdAt,
-                                shippingAddress = addressMap?.get("addressDetail") as? String,
-                                recipientName = addressMap?.get("name") as? String,
-                                recipientPhone = addressMap?.get("phone") as? String
-                            )
-                            orders.add(order)
-                            Log.d("OrderManager", "Added order: id=$orderId, userId=$userId, items=${itemsList.size}")
-                        } catch (e: Exception) {
-                            Log.e("OrderManager", "Error parsing order: ${orderSnapshot.key}, error: ${e.message}")
+                        val order = parseOrder(userId, orderSnapshot)
+                        order?.let {
+                            orders.add(it)
+                            Log.d("OrderManager", "Added order: id=${it.id}, userId=${it.userId}, items=${it.items?.size ?: 0}, createdAt=${it.createdAt}")
                         }
                     }
                 }
@@ -510,86 +551,42 @@ object OrderManager {
     }
 
     fun fetchAllOrders(onSuccess: (List<Order>) -> Unit, onError: (String) -> Unit) {
-        ordersRef.get().addOnSuccessListener { snapshot ->
-            Log.d("OrderManager", "Fetching all orders - Snapshot exists: ${snapshot.exists()}, Children count: ${snapshot.childrenCount}")
-            val orderList = mutableListOf<Order>()
-            if (!snapshot.exists() || snapshot.childrenCount.toInt() == 0) {
-                Log.d("OrderManager", "No orders found in database")
+        ordersRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                Log.d("OrderManager", "Fetching orders: exists=${snapshot.exists()}, childrenCount=${snapshot.childrenCount}")
                 orders.clear()
-                _ordersFlow.value = emptyList()
-                onSuccess(emptyList())
-                return@addOnSuccessListener
-            }
+                if (!snapshot.exists() || snapshot.childrenCount.toInt() == 0) {
+                    Log.d("OrderManager", "No orders found in database")
+                    _ordersFlow.value = emptyList()
+                    onSuccess(emptyList())
+                    return
+                }
 
-            for (userSnapshot in snapshot.children) {
-                val userId = userSnapshot.key ?: continue
-                Log.d("OrderManager", "Processing orders for user: $userId, Orders count: ${userSnapshot.childrenCount}")
-                for (orderSnapshot in userSnapshot.children) {
-                    try {
-                        val orderId = orderSnapshot.key ?: continue
-                        Log.d("OrderManager", "Processing order: $orderId")
-                        val totalPrice = orderSnapshot.child("totalPrice").getValue(Double::class.java) ?: 0.0
-                        val status = orderSnapshot.child("status").getValue(String::class.java) ?: "pending"
-                        val createdAt = orderSnapshot.child("createdAt").getValue(Long::class.java) ?: 0L
-                        val addressMap = orderSnapshot.child("address").value as? Map<String, Any>
-                        val itemsSnapshot = orderSnapshot.child("products")
-                        val itemsList = mutableListOf<OrderItem>()
-
-                        if (!itemsSnapshot.exists()) {
-                            Log.w("OrderManager", "No products found for order: $orderId")
-                        } else {
-                            for (item in itemsSnapshot.children) {
-                                try {
-                                    val name = item.child("name").getValue(String::class.java)
-                                        ?: item.child("title").getValue(String::class.java)
-                                        ?: "Unknown Item"
-                                    val price = item.child("price").getValue(Double::class.java) ?: 0.0
-                                    val quantityValue = item.child("quantity").value
-                                    val quantity = when (quantityValue) {
-                                        is Long -> quantityValue.toInt()
-                                        is Int -> quantityValue
-                                        else -> {
-                                            Log.w("OrderManager", "Invalid quantity for item in order $orderId: $quantityValue")
-                                            0
-                                        }
-                                    }
-                                    val imageUrl = item.child("imageUrl").getValue(String::class.java)
-                                    itemsList.add(OrderItem(name, price, quantity, imageUrl))
-                                    Log.d("OrderManager", "Added item: name=$name, price=$price, quantity=$quantity")
-                                } catch (e: Exception) {
-                                    Log.e("OrderManager", "Error parsing item in order $orderId: ${e.message}")
-                                }
+                for (userSnapshot in snapshot.children) {
+                    val userId = userSnapshot.key ?: continue
+                    Log.d("OrderManager", "Processing orders for user: $userId, ordersCount=${userSnapshot.childrenCount}")
+                    for (orderSnapshot in userSnapshot.children) {
+                        val order = parseOrder(userId, orderSnapshot)
+                        order?.let {
+                            orders.add(it)
+                            Log.d("OrderManager", "Added order: id=${it.id}, userId=${it.userId}, items=${it.items?.size ?: 0}, createdAt=${it.createdAt}")
+                            it.items?.forEach { item ->
+                                Log.d("OrderManager", "Item: title=${item.title}, price=${item.price}, quantity=${item.quantity}")
                             }
                         }
-
-                        val order = Order(
-                            id = orderId,
-                            userId = userId,
-                            items = itemsList,
-                            totalPrice = totalPrice,
-                            status = status,
-                            createdAt = createdAt,
-                            shippingAddress = addressMap?.get("addressDetail") as? String,
-                            recipientName = addressMap?.get("name") as? String,
-                            recipientPhone = addressMap?.get("phone") as? String
-                        )
-                        orderList.add(order)
-                        Log.d("OrderManager", "Added order to fetch list: id=$orderId, userId=$userId, items=${itemsList.size}")
-                    } catch (e: Exception) {
-                        Log.e("OrderManager", "Error parsing order: ${orderSnapshot.key}, error: ${e.message}")
                     }
                 }
+                orders.sortByDescending { it.createdAt }
+                _ordersFlow.value = orders.toList()
+                onSuccess(orders.toList())
+                Log.d("OrderManager", "Fetch completed: ${orders.size} orders")
             }
-            orderList.sortByDescending { it.createdAt }
-            orders.clear()
-            orders.addAll(orderList)
-            _ordersFlow.value = orders.toList()
-            Log.d("OrderManager", "Fetched orders: ${orderList.size} orders")
-            onSuccess(orderList)
-        }.addOnFailureListener { error ->
-            Log.e("OrderManager", "Failed to fetch orders: ${error.message}")
-            onError(error.message ?: "Unknown error")
-        }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("OrderManager", "Database error: ${error.message}")
+                onError(error.message)
+            }
+        })
     }
 
     fun updateOrderStatus(

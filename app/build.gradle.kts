@@ -45,7 +45,7 @@ android {
 
 dependencies {
 
-
+    implementation ("com.google.firebase:firebase-dynamic-links-ktx:21.2.0")
 // Firebase Authentication
     implementation ("com.google.firebase:firebase-auth")
 
