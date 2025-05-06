@@ -2,16 +2,16 @@
     <string name="app_name">APPBANLAPTOP</string>
 
     <string name="intro_title">
-        Welcome to Digital Store a Gateway to the Latest Tech
+        Chào mừng đến với Digital Store - Cổng vào Công nghệ Mới nhất
     </string>
 
     <string name="intro_sub_title">
-        Sign in to explore a wide range of cutting-edge digital products.
-        Don\'t have an account yet? Register now and enjoy a seamless and secure shopping experience.
+        Đăng nhập để khám phá đa dạng các sản phẩm kỹ thuật số tiên tiến.
+        Chưa có tài khoản? Đăng ký ngay bây giờ để trải nghiệm mua sắm mượt mà và an toàn.
     </string>
 
-    <string name="letgo">Let\'s Get Started</string>
-    <string name="sign">Already have an account? Sign in</string>
+    <string name="letgo">Bắt Đầu</string>
+    <string name="sign">Đã có tài khoản? Đăng nhập</string>
 
     <string name="default_web_client_id">312176967841-vi09lepvd4htvomtt475t5krk8qhd71b.apps.googleusercontent.com</string>
 </resources>

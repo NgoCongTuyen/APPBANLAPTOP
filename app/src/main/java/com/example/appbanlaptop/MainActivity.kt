@@ -202,7 +202,7 @@ fun MainActivityScreen(
                             .weight(4f)
                     ) {
                         Text(
-                            text = "Welcome Back",
+                            text = "Xin chào",
                             fontSize = 16.sp,
                             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                         )
@@ -332,9 +332,9 @@ fun MainActivityScreen(
             }
 
             item { AutoSlidingCarousel() }
-            item { SectionTitle("Categories") }
+            item { SectionTitle("Danh mục") }
             item { CategoryList(categories, context) }
-            item { SectionTitle("Recommended Products") }
+            item { SectionTitle("Sản phẩm đề xuất") }
             if (isLoadingItems) {
                 item {
                     CircularProgressIndicator(

@@ -42,7 +42,7 @@ object BottomActivity {
         ) {
             BottomMenuItem(
                 icon = painterResource(R.drawable.btn_1),
-                text = "Explore",
+                text = "Trang chủ",
                 onItemClick = {
                     if (context !is MainActivity) {
                         val intent = Intent(context, MainActivity::class.java)
@@ -52,7 +52,7 @@ object BottomActivity {
             )
             BottomMenuItem(
                 icon = painterResource(R.drawable.btn_2),
-                text = "Cart",
+                text = "Giỏ hàng",
                 onItemClick = {
                     if (context !is CartScreenActivity) {
                         val intent = Intent(context, CartScreenActivity::class.java)
@@ -62,7 +62,7 @@ object BottomActivity {
             )
             BottomMenuItem(
                 icon = painterResource(R.drawable.btn_4),
-                text = "Order",
+                text = "Đơn hàng",
                 onItemClick = {
                     if (context !is OrderActivity) {
                         val intent = Intent(context, OrderActivity::class.java)
@@ -72,7 +72,7 @@ object BottomActivity {
             )
             BottomMenuItem(
                 icon = painterResource(id = R.drawable.btn_5),
-                text = "Profile",
+                text = "Thông tin",
                 onItemClick = {
                     if (context !is ProfileActivity) {
                         val intent = Intent(context, ProfileActivity::class.java)

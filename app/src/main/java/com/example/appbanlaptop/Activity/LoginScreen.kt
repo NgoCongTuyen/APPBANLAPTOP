@@ -1,9 +1,11 @@
 package com.example.appbanlaptop.Activity
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -48,14 +50,17 @@ fun LoginScreen(
             Image(
                 painter = painterResource(id = R.drawable.logo),
                 contentDescription = "Logo",
-                modifier = Modifier.size(150.dp)
+                modifier = Modifier
+                    .size(150.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surface)
             )
             Spacer(modifier = Modifier.height(8.dp))
         }
         item {
             // Tiêu đề và mô tả
             Text(
-                text = "Bộ ba báo đời",
+                text = "ĐPT laptop",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Blue,
@@ -63,7 +68,7 @@ fun LoginScreen(
                 textAlign = TextAlign.Center
             )
             Text(
-                text = "A simple and efficient to-do app",
+                text = "Ứng dụng mua hàng đơn giản và hiệu quả",
                 fontSize = 14.sp,
                 color = Color.Blue,
                 modifier = Modifier.fillMaxWidth(),
@@ -74,7 +79,7 @@ fun LoginScreen(
         item {
             // Tiêu đề "Login"
             Text(
-                text = "Login",
+                text = "Đăng nhập",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Blue,
@@ -88,7 +93,7 @@ fun LoginScreen(
             OutlinedTextField(
                 value = viewModel.email.value,
                 onValueChange = { viewModel.email.value = it },
-                label = { Text("Your email") },
+                label = { Text("Nhập email") },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.MailOutline,
@@ -115,7 +120,7 @@ fun LoginScreen(
             OutlinedTextField(
                 value = viewModel.password.value,
                 onValueChange = { viewModel.password.value = it },
-                label = { Text("Password") },
+                label = { Text("Mật khẩu") },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Lock,
@@ -149,7 +154,7 @@ fun LoginScreen(
         }
         item {
             Text(
-                text = "Forget Password?",
+                text = "Quên mật khẩu?",
                 fontSize = 14.sp,
                 color = Color.Blue,
                 modifier = Modifier
@@ -194,7 +199,7 @@ fun LoginScreen(
                     )
                 } else {
                     Text(
-                        text = "Login",
+                        text = "Đăng nhập",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
@@ -206,7 +211,7 @@ fun LoginScreen(
         item {
             // Liên kết "Don't have an account? Sign up"
             Text(
-                text = "Don't have an account? Sign up",
+                text = "Chưa có tài khoản? Đăng ký",
                 fontSize = 14.sp,
                 color = Color.Blue,
                 modifier = Modifier
@@ -219,7 +224,7 @@ fun LoginScreen(
         item {
             // Phần "OR"
             Text(
-                text = "OR",
+                text = "HOẶC",
                 fontSize = 14.sp,
                 color = Color.Gray,
                 modifier = Modifier.fillMaxWidth(),

@@ -161,7 +161,7 @@ fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, t
             TopAppBar(
                 title = {
                     Text(
-                        text = "Payment",
+                        text = "Thanh toán",
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp,
                         color = MaterialTheme.colorScheme.onBackground
@@ -923,7 +923,7 @@ fun OrderSuccessScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Xử lý đơn hàng", color = MaterialTheme.colorScheme.onBackground) },
+                title = { Text("Đơn hàng", color = MaterialTheme.colorScheme.onBackground) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
         }

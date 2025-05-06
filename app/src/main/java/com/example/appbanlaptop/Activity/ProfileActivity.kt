@@ -147,7 +147,7 @@ fun ProfileScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = " Profile",
+                            text = "Thông tin",
                             fontWeight = FontWeight.Bold,
                             color = if (isDarkMode) Color.White else Color.Black
                         )
@@ -256,7 +256,7 @@ fun ProfileScreen(
                         horizontalAlignment = Alignment.Start
                     ) {
                         Text(
-                            text = "Account Details",
+                            text = "Thông tin tài khoản",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = if (isDarkMode) Color.White else Color.Black
@@ -265,19 +265,19 @@ fun ProfileScreen(
 
                         createdAt.value?.let { timestamp ->
                             Text(
-                                text = "Joined: ${SimpleDateFormat("dd/MM/yyyy").format(Date(timestamp))}",
+                                text = "Ngày tham gia: ${SimpleDateFormat("dd/MM/yyyy").format(Date(timestamp))}",
                                 fontSize = 16.sp,
                                 color = if (isDarkMode) Color.LightGray else Color.Gray
                             )
                         } ?: Text(
-                            text = "Joined: Loading...",
+                            text = "Ngày tham gia: ...",
                             fontSize = 16.sp,
                             color = if (isDarkMode) Color.LightGray else Color.Gray
                         )
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = "Total Orders: 5",
+                            text = "Số đơn hàng: ...",
                             fontSize = 16.sp,
                             color = if (isDarkMode) Color.LightGray else Color.Gray
                         )
@@ -304,7 +304,7 @@ fun ProfileScreen(
                         horizontalAlignment = Alignment.Start
                     ) {
                         Text(
-                            text = "Settings",
+                            text = "Cài đặt",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = if (isDarkMode) Color.White else Color.Black
@@ -312,7 +312,7 @@ fun ProfileScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = "Notifications: Enabled",
+                            text = "Thông báo: đã bật",
                             fontSize = 16.sp,
                             color = if (isDarkMode) Color.LightGray else Color.Gray
                         )
@@ -324,7 +324,7 @@ fun ProfileScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Dark Mode",
+                                text = "Chế độ tối",
                                 fontSize = 16.sp,
                                 color = if (isDarkMode) Color.LightGray else Color.Gray
                             )
@@ -386,7 +386,7 @@ fun ProfileScreen(
                                 )
                             } else {
                                 Text(
-                                    text = "Logout",
+                                    text = "Đăng xuất",
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold
                                 )

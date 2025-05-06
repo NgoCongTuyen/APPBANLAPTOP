@@ -327,7 +327,7 @@ fun DetailsItemsScreen(
             item {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Description",
+                    text = "Mô tả",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
@@ -345,7 +345,7 @@ fun DetailsItemsScreen(
                 item {
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Available Models",
+                        text = "Phiên bản",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
@@ -379,14 +379,14 @@ fun DetailsItemsScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
+                        .padding(horizontal = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     // Nút Add to Cart
                     Button(
                         onClick = onAddToCartClick,
                         modifier = Modifier
-                            .weight(1f)
+                            .weight(5f)
                             .height(48.dp)
                             .padding(end = 8.dp),
                         shape = RoundedCornerShape(8.dp),
@@ -396,8 +396,8 @@ fun DetailsItemsScreen(
                         )
                     ) {
                         Text(
-                            text = "Add to Cart",
-                            fontSize = 16.sp,
+                            text = "Thêm giỏ hàng",
+                            fontSize = 15.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -406,7 +406,7 @@ fun DetailsItemsScreen(
                     Button(
                         onClick = onBuyNowClick,
                         modifier = Modifier
-                            .weight(1f)
+                            .weight(4f)
                             .height(48.dp)
                             .padding(start = 8.dp),
                         shape = RoundedCornerShape(8.dp),
@@ -416,7 +416,7 @@ fun DetailsItemsScreen(
                         )
                     ) {
                         Text(
-                            text = "Buy Now",
+                            text = "Mua ngay",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )

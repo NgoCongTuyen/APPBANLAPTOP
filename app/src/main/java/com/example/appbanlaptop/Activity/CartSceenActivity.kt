@@ -138,7 +138,7 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Cart",
+                            text = "Giỏ hàng",
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onBackground
                         )
@@ -225,12 +225,12 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Total items: ${cartItems.size}",
+                                    text = "Số lượng: ${cartItems.size}",
                                     fontSize = 14.sp
                                 )
                                 val formattedTotal = numberFormat.format(allItemsTotal)
                                 Text(
-                                    text = "Total: $formattedTotal",
+                                    text = "Tổng cộng: $formattedTotal",
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary
@@ -304,7 +304,7 @@ fun CartScreen(navController: NavController? = null, onBackClick: () -> Unit) {
                         ) {
                             val formattedTotal = numberFormat.format(selectedItemsTotal)
                             Text(
-                                text = "Check Out ($formattedTotal)",
+                                text = "Mua hàng ($formattedTotal)",
                                 color = MaterialTheme.colorScheme.onPrimary,
                                 fontSize = 16.sp
                             )
