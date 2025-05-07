@@ -17,12 +17,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,7 +37,7 @@ import com.google.accompanist.pager.rememberPagerState
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminProductScreen(modifier: Modifier = Modifier) {
-    val products by ProductManager.itemsFlow.collectAsState()
+    val productsMap by ProductManager.itemsFlow.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     val context = LocalContext.current
@@ -52,8 +50,8 @@ fun AdminProductScreen(modifier: Modifier = Modifier) {
         }
     }
 
-    LaunchedEffect(products) {
-        Log.d("AdminProductScreen", "Products cập nhật: ${products.size} sản phẩm")
+    LaunchedEffect(productsMap) {
+        Log.d("AdminProductScreen", "Products cập nhật: ${productsMap.size} sản phẩm")
         isLoading = false
     }
 
@@ -78,7 +76,7 @@ fun AdminProductScreen(modifier: Modifier = Modifier) {
                         CircularProgressIndicator()
                     }
                 }
-                products.isEmpty() -> {
+                productsMap.isEmpty() -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -92,16 +90,16 @@ fun AdminProductScreen(modifier: Modifier = Modifier) {
                     }
                 }
                 else -> {
-                    val filteredProducts = products.filter {
-                        it.title?.contains(searchQuery, ignoreCase = true) == true ||
-                                it.categoryId?.contains(searchQuery, ignoreCase = true) == true
+                    val filteredProducts = productsMap.filter { (_, product) ->
+                        product.title?.contains(searchQuery, ignoreCase = true) == true ||
+                                product.categoryId?.contains(searchQuery, ignoreCase = true) == true
                     }
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(8.dp)
                     ) {
-                        items(filteredProducts, key = { it.id ?: it.hashCode().toString() }) { product ->
-                            ProductCard(product = product)
+                        items(filteredProducts.toList(), key = { it.first }) { (key, product) ->
+                            ProductCard(product = product, productKey = key)
                         }
                     }
                 }
@@ -158,7 +156,7 @@ fun AddProductDialog(
         onDismissRequest = { if (!isLoading) onDismiss() },
         title = { Text("Thêm sản phẩm mới") },
         text = {
-            LazyColumn (
+            LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(8.dp),
@@ -192,20 +190,20 @@ fun AddProductDialog(
                         enabled = !isLoading
                     )
                 }
-              item {
-                  OutlinedTextField(
-                      value = description,
-                      onValueChange = { description = it },
-                      label = { Text("Mô tả") },
-                      modifier = Modifier.fillMaxWidth(),
-                      enabled = !isLoading
-                  )
-              }
+                item {
+                    OutlinedTextField(
+                        value = description,
+                        onValueChange = { description = it },
+                        label = { Text("Mô tả") },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isLoading
+                    )
+                }
                 item {
                     OutlinedTextField(
                         value = picUrl,
                         onValueChange = { picUrl = it },
-                        label = { Text("URL hình ảnh (phân cách bằng dấu phẩy)") },
+                        label = { Text("URL hình ảnh") },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !isLoading
                     )
@@ -234,7 +232,7 @@ fun AddProductDialog(
                     }
                 }
                 item {
-                     OutlinedTextField(
+                    OutlinedTextField(
                         value = model,
                         onValueChange = { model = it },
                         label = { Text("Mẫu mã (phân cách bằng dấu phẩy)") },
@@ -304,7 +302,7 @@ fun AddProductDialog(
 
 @OptIn(ExperimentalPagerApi::class)
 @Composable
-fun ProductCard(product: ProductItem) {
+fun ProductCard(product: ProductItem, productKey: String) {
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -412,7 +410,7 @@ fun ProductCard(product: ProductItem) {
                 TextButton(
                     onClick = {
                         ProductManager.removeProduct(
-                            productId = product.id,
+                            productKey = productKey,
                             onSuccess = {
                                 Toast.makeText(context, "Đã xóa sản phẩm: ${product.title}", Toast.LENGTH_SHORT).show()
                                 showDeleteDialog = false
@@ -437,10 +435,12 @@ fun ProductCard(product: ProductItem) {
     if (showEditDialog) {
         EditProductDialog(
             product = product,
+            productKey = productKey,
             onDismiss = { showEditDialog = false },
             onUpdateProduct = { updatedProduct ->
                 ProductManager.updateProduct(
                     product = updatedProduct,
+                    productKey = productKey,
                     onSuccess = {
                         Toast.makeText(context, "Đã cập nhật sản phẩm: ${updatedProduct.title}", Toast.LENGTH_SHORT).show()
                         showEditDialog = false
@@ -458,6 +458,7 @@ fun ProductCard(product: ProductItem) {
 @Composable
 fun EditProductDialog(
     product: ProductItem,
+    productKey: String,
     onDismiss: () -> Unit,
     onUpdateProduct: (ProductItem) -> Unit
 ) {
@@ -482,15 +483,15 @@ fun EditProductDialog(
                     .padding(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-               item {
-                   OutlinedTextField(
-                       value = categoryId,
-                       onValueChange = { categoryId = it },
-                       label = { Text("ID danh mục") },
-                       modifier = Modifier.fillMaxWidth(),
-                       enabled = !isLoading
-                   )
-               }
+                item {
+                    OutlinedTextField(
+                        value = categoryId,
+                        onValueChange = { categoryId = it },
+                        label = { Text("ID danh mục") },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isLoading
+                    )
+                }
                 item {
                     OutlinedTextField(
                         value = title,
@@ -585,7 +586,6 @@ fun EditProductDialog(
                         String.format("%,d", priceLong).replace(",", ".")
                     }
                     val updatedProduct = ProductItem(
-                        id = product.id,
                         categoryId = categoryId,
                         title = title,
                         price = formattedPrice,

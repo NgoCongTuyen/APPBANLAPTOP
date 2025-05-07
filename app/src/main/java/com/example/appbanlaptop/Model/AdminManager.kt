@@ -54,8 +54,8 @@ data class OrderItem(
 object ProductManager {
     private val database = FirebaseDatabase.getInstance()
     private val productsRef = database.getReference("Items")
-    private val _itemsFlow = MutableStateFlow<List<ProductItem>>(emptyList())
-    val itemsFlow: StateFlow<List<ProductItem>> = _itemsFlow.asStateFlow()
+    private val _itemsFlow = MutableStateFlow<Map<String, ProductItem>>(emptyMap())
+    val itemsFlow: StateFlow<Map<String, ProductItem>> = _itemsFlow.asStateFlow()
     private var valueEventListener: ValueEventListener? = null
     private var isListenerActive = false
 
@@ -65,15 +65,15 @@ object ProductManager {
 
     fun addProduct(product: ProductItem, onSuccess: () -> Unit, onError: (String) -> Unit) {
         val newRef = productsRef.push()
-        val productWithId = product.copy(id = newRef.key)
-        Log.d("ProductManager", "Thêm sản phẩm: $productWithId")
-        newRef.setValue(productWithId)
+        val productKey = newRef.key ?: run {
+            Log.e("ProductManager", "Không thể tạo key cho sản phẩm mới")
+            onError("Không thể tạo key cho sản phẩm")
+            return
+        }
+        Log.d("ProductManager", "Thêm sản phẩm với key: $productKey, title: ${product.title}")
+        newRef.setValue(product)
             .addOnSuccessListener {
-                Log.d("ProductManager", "Thêm sản phẩm thành công: ${productWithId.title}")
-                // Cập nhật tạm thời _itemsFlow để giao diện phản ánh ngay
-                val currentItems = _itemsFlow.value.toMutableList()
-                currentItems.add(productWithId)
-                _itemsFlow.value = currentItems.sortedBy { it.title }
+                Log.d("ProductManager", "Thêm sản phẩm thành công: ${product.title}")
                 onSuccess()
             }
             .addOnFailureListener {
@@ -82,51 +82,40 @@ object ProductManager {
             }
     }
 
-    fun updateProduct(product: ProductItem, onSuccess: () -> Unit, onError: (String) -> Unit) {
-        product.id?.let { id ->
-            Log.d("ProductManager", "Cập nhật sản phẩm: $product")
-            productsRef.child(id).setValue(product)
-                .addOnSuccessListener {
-                    Log.d("ProductManager", "Cập nhật sản phẩm thành công: ${product.title}")
-                    // Cập nhật tạm thời _itemsFlow để giao diện phản ánh ngay
-                    val currentItems = _itemsFlow.value.toMutableList()
-                    val index = currentItems.indexOfFirst { it.id == product.id }
-                    if (index != -1) {
-                        currentItems[index] = product
-                        _itemsFlow.value = currentItems.sortedBy { it.title }
-                    }
-                    onSuccess()
-                }
-                .addOnFailureListener {
-                    Log.e("ProductManager", "Lỗi khi cập nhật sản phẩm: ${it.message}")
-                    onError(it.message ?: "Lỗi không xác định")
-                }
-        } ?: run {
-            Log.e("ProductManager", "ID sản phẩm là null")
-            onError("ID sản phẩm là null")
+    fun updateProduct(product: ProductItem, productKey: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        if (productKey.isBlank()) {
+            Log.e("ProductManager", "Key sản phẩm là rỗng")
+            onError("Key sản phẩm là rỗng")
+            return
         }
+        Log.d("ProductManager", "Cập nhật sản phẩm với key: $productKey, title: ${product.title}")
+        productsRef.child(productKey).setValue(product)
+            .addOnSuccessListener {
+                Log.d("ProductManager", "Cập nhật sản phẩm thành công: ${product.title}")
+                onSuccess()
+            }
+            .addOnFailureListener {
+                Log.e("ProductManager", "Lỗi khi cập nhật sản phẩm: ${it.message}")
+                onError(it.message ?: "Lỗi không xác định")
+            }
     }
 
-    fun removeProduct(productId: String?, onSuccess: () -> Unit, onError: (String) -> Unit) {
-        productId?.let { id ->
-            Log.d("ProductManager", "Xóa sản phẩm với ID: $id")
-            productsRef.child(id).removeValue()
-                .addOnSuccessListener {
-                    Log.d("ProductManager", "Xóa sản phẩm thành công với ID: $id")
-                    // Cập nhật tạm thời _itemsFlow để giao diện phản ánh ngay
-                    val currentItems = _itemsFlow.value.toMutableList()
-                    currentItems.removeAll { it.id == id }
-                    _itemsFlow.value = currentItems.sortedBy { it.title }
-                    onSuccess()
-                }
-                .addOnFailureListener {
-                    Log.e("ProductManager", "Lỗi khi xóa sản phẩm: ${it.message}")
-                    onError(it.message ?: "Lỗi không xác định")
-                }
-        } ?: run {
-            Log.e("ProductManager", "ID sản phẩm là null")
-            onError("ID sản phẩm là null")
+    fun removeProduct(productKey: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        if (productKey.isBlank()) {
+            Log.e("ProductManager", "Key sản phẩm là rỗng")
+            onError("Key sản phẩm là rỗng")
+            return
         }
+        Log.d("ProductManager", "Xóa sản phẩm với key: $productKey")
+        productsRef.child(productKey).removeValue()
+            .addOnSuccessListener {
+                Log.d("ProductManager", "Xóa sản phẩm thành công với key: $productKey")
+                onSuccess()
+            }
+            .addOnFailureListener {
+                Log.e("ProductManager", "Lỗi khi xóa sản phẩm: ${it.message}")
+                onError(it.message ?: "Lỗi không xác định")
+            }
     }
 
     fun cleanup() {
@@ -136,7 +125,6 @@ object ProductManager {
             isListenerActive = false
             Log.d("ProductManager", "Đã dọn dẹp listener Firebase")
         }
-        // Không đặt _itemsFlow.value = emptyList() để giữ dữ liệu cục bộ
     }
 
     fun ensureListener() {
@@ -146,23 +134,23 @@ object ProductManager {
     }
 
     private fun setupListener() {
-        cleanup() // Dọn dẹp listener cũ trước khi tạo mới
+        cleanup()
         valueEventListener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 Log.d("ProductManager", "Nhận snapshot dữ liệu: exists=${snapshot.exists()}, childrenCount=${snapshot.childrenCount}")
-                val newItems = mutableListOf<ProductItem>()
+                val newItems = mutableMapOf<String, ProductItem>()
                 if (!snapshot.exists() || snapshot.childrenCount == 0L) {
                     Log.d("ProductManager", "Không tìm thấy sản phẩm trong cơ sở dữ liệu")
-                    _itemsFlow.value = emptyList()
+                    _itemsFlow.value = emptyMap()
                     return
                 }
 
                 for (item in snapshot.children) {
                     try {
-                        val product = item.getValue(ProductItem::class.java)?.copy(id = item.key)
-                        if (product != null) {
-                            newItems.add(product)
-                            Log.d("ProductManager", "Thêm sản phẩm: id=${product.id}, title=${product.title}")
+                        val product = item.getValue(ProductItem::class.java)
+                        if (product != null && item.key != null) {
+                            newItems[item.key!!] = product
+                            Log.d("ProductManager", "Thêm sản phẩm: key=${item.key}, title=${product.title}")
                         } else {
                             Log.w("ProductManager", "Dữ liệu sản phẩm không hợp lệ tại key: ${item.key}")
                         }
@@ -170,13 +158,12 @@ object ProductManager {
                         Log.e("ProductManager", "Lỗi khi phân tích sản phẩm tại key: ${item.key}, lỗi: ${e.message}")
                     }
                 }
-                _itemsFlow.value = newItems.sortedBy { it.title }
+                _itemsFlow.value = newItems
                 Log.d("ProductManager", "Cập nhật itemsFlow: ${newItems.size} sản phẩm")
             }
 
             override fun onCancelled(error: DatabaseError) {
                 Log.e("ProductManager", "Lỗi cơ sở dữ liệu: ${error.message}, chi tiết: ${error.details}")
-                // Giữ danh sách hiện tại nếu có lỗi
             }
         }
         valueEventListener?.let {

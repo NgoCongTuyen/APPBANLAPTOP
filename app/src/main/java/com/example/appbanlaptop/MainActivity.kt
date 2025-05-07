@@ -432,7 +432,7 @@ fun CategoryItem(
 ) {
     Column(
         modifier = Modifier
-            .clickable(onClick = onItemClick),
+            .clickable(onClick = onItemClick).fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
@@ -544,7 +544,7 @@ fun ProductItem(product: ProductItem) {
             .width(155.dp)
             .height(230.dp)
             .background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(12.dp))
-            .padding(14.dp),
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
@@ -674,7 +674,7 @@ fun AutoSlidingCarousel(
 ) {
     val banners = listOf(
         R.drawable.banner1,
-        R.drawable.banner2
+        R.drawable.banner2,
     )
     val pagerState = rememberPagerState()
     val coroutineScope = rememberCoroutineScope()

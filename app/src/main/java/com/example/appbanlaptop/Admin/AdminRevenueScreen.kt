@@ -45,29 +45,39 @@ fun AdminRevenueScreen(modifier: Modifier = Modifier) {
     }
     val totalOrders by remember(orders) { derivedStateOf { orders.size } }
 
-    // Tính doanh thu theo ngày
-    val revenueByDate by remember(orders) {
+    // Lấy tháng và năm hiện tại
+    val currentCalendar = Calendar.getInstance()
+    val currentMonthYear = SimpleDateFormat("MM/yyyy", Locale.getDefault()).format(currentCalendar.time)
+
+    // Tính doanh thu theo ngày trong tháng hiện tại
+    val revenueByDay by remember(orders, currentMonthYear) {
         derivedStateOf {
             val revenueMap = mutableMapOf<String, Double>()
-            val dateFormat = DateFormat.getDateInstance(DateFormat.SHORT, Locale.getDefault())
+            val dayFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+            val monthFormat = SimpleDateFormat("MM/yyyy", Locale.getDefault())
 
             orders.forEach { order ->
-                val date = order.createdAt?.let {
+                val orderDate = order.createdAt?.let {
                     try {
-                        dateFormat.format(Date(it))
+                        Date(it)
                     } catch (e: Exception) {
                         Log.e("AdminRevenueScreen", "Invalid date format for order ${order.id}: ${order.createdAt}")
                         null
                     }
                 } ?: return@forEach
-                val price = order.totalPrice?.toDouble() ?: 0.0
-                revenueMap[date] = (revenueMap[date] ?: 0.0) + price
+
+                // Kiểm tra nếu đơn hàng thuộc tháng hiện tại
+                if (monthFormat.format(orderDate) == currentMonthYear) {
+                    val day = dayFormat.format(orderDate)
+                    val price = order.totalPrice?.toDouble() ?: 0.0
+                    revenueMap[day] = (revenueMap[day] ?: 0.0) + price
+                }
             }
 
             revenueMap.entries.sortedBy {
                 val calendar = Calendar.getInstance()
                 try {
-                    dateFormat.parse(it.key)?.let { date -> calendar.time = date }
+                    dayFormat.parse(it.key)?.let { date -> calendar.time = date }
                 } catch (e: ParseException) {
                     Log.e("AdminRevenueScreen", "Failed to parse date: ${it.key}")
                 }
@@ -76,11 +86,42 @@ fun AdminRevenueScreen(modifier: Modifier = Modifier) {
         }
     }
 
-    // Log dữ liệu chỉ khi cần thiết (ví dụ, khi orders thay đổi lần đầu)
+    // Tính doanh thu theo tháng
+    val revenueByMonth by remember(orders) {
+        derivedStateOf {
+            val revenueMap = mutableMapOf<String, Double>()
+            val monthFormat = SimpleDateFormat("MM/yyyy", Locale.getDefault())
+
+            orders.forEach { order ->
+                val monthYear = order.createdAt?.let {
+                    try {
+                        monthFormat.format(Date(it))
+                    } catch (e: Exception) {
+                        Log.e("AdminRevenueScreen", "Invalid date format for order ${order.id}: ${order.createdAt}")
+                        null
+                    }
+                } ?: return@forEach
+                val price = order.totalPrice?.toDouble() ?: 0.0
+                revenueMap[monthYear] = (revenueMap[monthYear] ?: 0.0) + price
+            }
+
+            revenueMap.entries.sortedBy {
+                val calendar = Calendar.getInstance()
+                try {
+                    monthFormat.parse(it.key)?.let { date -> calendar.time = date }
+                } catch (e: ParseException) {
+                    Log.e("AdminRevenueScreen", "Failed to parse date: ${it.key}")
+                }
+                calendar.timeInMillis
+            }.associate { it.key to it.value }
+        }
+    }
+
+    // Log dữ liệu
     LaunchedEffect(orders) {
         if (orders.isNotEmpty()) {
             Log.d("AdminRevenueScreen", "Orders loaded: ${orders.size}")
-            orders.take(5).forEach { order -> // Giới hạn log để tránh spam
+            orders.take(5).forEach { order ->
                 Log.d("AdminRevenueScreen", "Order ${order.id}: items=${order.items?.size ?: 0}, totalPrice=${order.totalPrice}")
             }
         }
@@ -116,7 +157,7 @@ fun AdminRevenueScreen(modifier: Modifier = Modifier) {
         }
 
         item {
-            // Biểu đồ doanh thu
+            // Biểu đồ doanh thu theo ngày trong tháng hiện tại
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -126,18 +167,46 @@ fun AdminRevenueScreen(modifier: Modifier = Modifier) {
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        text = "Doanh thu theo ngày",
+                        text = "Doanh thu theo ngày ($currentMonthYear)",
                         style = MaterialTheme.typography.titleMedium
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    if (revenueByDate.isEmpty()) {
+                    if (revenueByDay.isEmpty()) {
+                        Text(
+                            text = "Không có dữ liệu doanh thu trong tháng này",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    } else {
+                        DailyBarChart(revenueByDay = revenueByDay, currencyFormatter = currencyFormatter)
+                    }
+                }
+            }
+        }
+
+        item {
+            // Biểu đồ doanh thu theo tháng
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "Doanh thu theo tháng",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    if (revenueByMonth.isEmpty()) {
                         Text(
                             text = "Không có dữ liệu doanh thu",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.error
                         )
                     } else {
-                        SimpleBarChart(revenueByDate = revenueByDate, currencyFormatter = currencyFormatter)
+                        MonthlyBarChart(revenueByMonth = revenueByMonth, currencyFormatter = currencyFormatter)
                     }
                 }
             }
@@ -150,17 +219,102 @@ fun AdminRevenueScreen(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun SimpleBarChart(revenueByDate: Map<String, Double>, currencyFormatter: NumberFormat) {
-    val maxRevenue = revenueByDate.values.maxOrNull() ?: 1.0
-    val dates = revenueByDate.keys.toList()
-    val revenues = revenueByDate.values.toList()
+fun DailyBarChart(revenueByDay: Map<String, Double>, currencyFormatter: NumberFormat) {
+    val maxRevenue = revenueByDay.values.maxOrNull() ?: 1.0
+    val days = revenueByDay.keys.toList()
+    val revenues = revenueByDay.values.toList()
 
     // Đặt chiều rộng mỗi cột và giới hạn số lượng cột hiển thị
-    val barWidth = 120.dp // Tăng chiều rộng cột để có khoảng cách lớn hơn
-    val maxVisibleBars = 20 // Giới hạn số cột hiển thị
-    val visibleDates = dates.take(maxVisibleBars)
+    val barWidth = 80.dp // Cột hẹp hơn vì có nhiều ngày
+    val maxVisibleBars = 31 // Tối đa 31 ngày trong tháng
+    val visibleDays = days.take(maxVisibleBars)
     val visibleRevenues = revenues.take(maxVisibleBars)
-    val totalWidth = (barWidth * visibleDates.size).coerceAtLeast(100.dp)
+    val totalWidth = (barWidth * visibleDays.size).coerceAtLeast(100.dp)
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+    ) {
+        Canvas(
+            modifier = Modifier
+                .width(totalWidth)
+                .height(350.dp)
+                .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp)
+        ) {
+            val maxHeight = size.height - 60.dp.toPx() // Chừa chỗ cho nhãn
+
+            // Vẽ trục
+            drawLine(
+                start = Offset(0f, maxHeight),
+                end = Offset(size.width, maxHeight),
+                color = Color.Gray,
+                strokeWidth = 2f
+            )
+            drawLine(
+                start = Offset(0f, 0f),
+                end = Offset(0f, maxHeight),
+                color = Color.Gray,
+                strokeWidth = 2f
+            )
+
+            // Vẽ các cột
+            visibleRevenues.forEachIndexed { index, revenue ->
+                val barHeight = (revenue / maxRevenue * maxHeight).toFloat()
+                val x = index * barWidth.toPx()
+
+                drawRect(
+                    color = Color.Green, // Màu khác để phân biệt
+                    topLeft = Offset(x, maxHeight - barHeight),
+                    size = Size(barWidth.toPx() * 0.6f, barHeight)
+                )
+
+                // Vẽ nhãn ngày
+                drawContext.canvas.nativeCanvas.apply {
+                    drawText(
+                        visibleDays[index].substring(0, 2), // Chỉ lấy ngày (dd)
+                        x + (barWidth.toPx() * 0.6f) / 2,
+                        maxHeight + 40.dp.toPx(),
+                        android.graphics.Paint().apply {
+                            color = android.graphics.Color.BLACK
+                            textSize = 24f // Nhỏ hơn vì nhiều nhãn
+                            textAlign = android.graphics.Paint.Align.CENTER
+                        }
+                    )
+                }
+
+                // Vẽ tổng tiền trên đỉnh cột
+                if (revenue > 0) {
+                    drawContext.canvas.nativeCanvas.apply {
+                        drawText(
+                            currencyFormatter.format(revenue),
+                            x + (barWidth.toPx() * 0.6f) / 2,
+                            maxHeight - barHeight - 10.dp.toPx(),
+                            android.graphics.Paint().apply {
+                                color = android.graphics.Color.BLACK
+                                textSize = 22f
+                                textAlign = android.graphics.Paint.Align.CENTER
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MonthlyBarChart(revenueByMonth: Map<String, Double>, currencyFormatter: NumberFormat) {
+    val maxRevenue = revenueByMonth.values.maxOrNull() ?: 1.0
+    val months = revenueByMonth.keys.toList()
+    val revenues = revenueByMonth.values.toList()
+
+    // Đặt chiều rộng mỗi cột và giới hạn số lượng cột hiển thị
+    val barWidth = 120.dp
+    val maxVisibleBars = 12 // Tối đa 12 tháng
+    val visibleMonths = months.take(maxVisibleBars)
+    val visibleRevenues = revenues.take(maxVisibleBars)
+    val totalWidth = (barWidth * visibleMonths.size).coerceAtLeast(100.dp)
 
     Box(
         modifier = Modifier
@@ -197,18 +351,18 @@ fun SimpleBarChart(revenueByDate: Map<String, Double>, currencyFormatter: Number
                 drawRect(
                     color = Color.Blue,
                     topLeft = Offset(x, maxHeight - barHeight),
-                    size = Size(barWidth.toPx() * 0.6f, barHeight) // Giảm chiều rộng cột để tăng khoảng cách
+                    size = Size(barWidth.toPx() * 0.6f, barHeight)
                 )
 
-                // Vẽ nhãn ngày (hiển thị ngang, không xoay)
+                // Vẽ nhãn tháng/năm
                 drawContext.canvas.nativeCanvas.apply {
                     drawText(
-                        visibleDates[index].take(10), // Giới hạn độ dài nhãn
+                        visibleMonths[index],
                         x + (barWidth.toPx() * 0.6f) / 2,
                         maxHeight + 40.dp.toPx(),
                         android.graphics.Paint().apply {
                             color = android.graphics.Color.BLACK
-                            textSize = 30f // Giảm kích thước chữ để tránh chồng lấn
+                            textSize = 30f
                             textAlign = android.graphics.Paint.Align.CENTER
                         }
                     )
@@ -223,7 +377,7 @@ fun SimpleBarChart(revenueByDate: Map<String, Double>, currencyFormatter: Number
                             maxHeight - barHeight - 10.dp.toPx(),
                             android.graphics.Paint().apply {
                                 color = android.graphics.Color.BLACK
-                                textSize = 27f // Giảm kích thước chữ cho rõ ràng
+                                textSize = 24f
                                 textAlign = android.graphics.Paint.Align.CENTER
                             }
                         )
