@@ -61,7 +61,7 @@ fun LoginScreen(
         item {
             // Tiêu đề và mô tả
             Text(
-                text = "ĐPT laptop",
+                text = "ĐPT Shop",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Blue,
