@@ -790,25 +790,31 @@ fun TotalAndCheckoutButton(
         }
         Button(
             onClick = {
-                // Kiểm tra xem đã chọn địa chỉ chưa
                 if (selectedAddress == null) {
                     android.widget.Toast.makeText(context, "Vui lòng chọn địa chỉ giao hàng", android.widget.Toast.LENGTH_SHORT).show()
                     return@Button
                 }
 
-                // Lấy userId từ Firebase Authentication
                 val userId = FirebaseAuth.getInstance().currentUser?.uid
                 if (userId == null) {
                     android.widget.Toast.makeText(context, "Vui lòng đăng nhập để đặt hàng", android.widget.Toast.LENGTH_SHORT).show()
                     return@Button
                 }
 
-                // Tạo ID đơn hàng ngắn
                 val timestamp = System.currentTimeMillis()
                 val random = (Math.random() * 1000).toInt()
                 val orderId = "${timestamp.toString().takeLast(6)}${random.toString().padStart(3, '0')}"
 
-                // Tạo dữ liệu đơn hàng
+                // Tính toán totalPrice từ danh sách products
+                val calculatedTotalPrice = products.sumOf { product ->
+                    try {
+                        product.price.toDouble() * product.quantity
+                    } catch (e: NumberFormatException) {
+                        Log.e("TotalAndCheckoutButton", "Invalid price format for product: ${product.name}, price=${product.price}")
+                        0.0
+                    }
+                }
+
                 val order = mapOf(
                     "orderId" to orderId,
                     "address" to mapOf(
@@ -826,19 +832,17 @@ fun TotalAndCheckoutButton(
                             "imageUrl" to product.imageUrl
                         )
                     },
-                    "totalPrice" to totalPrice,
+                    "totalPrice" to calculatedTotalPrice, // Đảm bảo lưu totalPrice
                     "status" to "pending",
                     "createdAt" to timestamp
                 )
 
-                // Lưu vào Realtime Database
                 val database = FirebaseDatabase.getInstance()
                 val ordersRef = database.getReference("orders").child(userId)
-                val newOrderRef = ordersRef.child(orderId) // Sử dụng orderId làm key
+                val newOrderRef = ordersRef.child(orderId)
 
                 newOrderRef.setValue(order)
                     .addOnSuccessListener {
-                        // Xóa các sản phẩm đã thanh toán khỏi giỏ hàng
                         val cartRef = database.getReference("Cart").child(userId).child("items")
                         products.forEach { product ->
                             cartRef.orderByChild("title").equalTo(product.name)
@@ -856,7 +860,9 @@ fun TotalAndCheckoutButton(
                         }
 
                         android.widget.Toast.makeText(context, "Đặt hàng thành công!", android.widget.Toast.LENGTH_SHORT).show()
-                        navController.navigate("order_success")
+                        navController.navigate("order_success") {
+                            popUpTo("payment") { inclusive = true }
+                        }
                     }
                     .addOnFailureListener { e ->
                         android.widget.Toast.makeText(context, "Lỗi khi đặt hàng: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
@@ -889,6 +895,10 @@ fun OrderSuccessScreen(
     totalPrice: Double
 ) {
     var orderAddress by remember { mutableStateOf<Address?>(null) }
+    var orderProducts by remember { mutableStateOf<List<Product>>(emptyList()) }
+    var orderTotalPrice by remember { mutableStateOf(0.0) }
+    var isLoading by remember { mutableStateOf(true) } // Thêm trạng thái tải
+    var errorMessage by remember { mutableStateOf<String?>(null) } // Thêm trạng thái lỗi
 
     // Truy xuất đơn hàng mới nhất từ Firebase
     LaunchedEffect(Unit) {
@@ -899,24 +909,63 @@ fun OrderSuccessScreen(
             ordersRef.orderByChild("createdAt").limitToLast(1)
                 .addListenerForSingleValueEvent(object : ValueEventListener {
                     override fun onDataChange(snapshot: DataSnapshot) {
-                        for (orderSnapshot in snapshot.children) {
-                            val addressMap = orderSnapshot.child("address").value as? Map<String, Any>
-                            addressMap?.let {
-                                orderAddress = Address(
-                                    name = it["name"] as? String ?: "",
-                                    phone = it["phone"] as? String ?: "",
-                                    addressDetail = it["addressDetail"] as? String ?: "",
-                                    isDefault = it["isDefault"] as? Boolean ?: false
-                                )
-                                Log.d("OrderSuccessScreen", "Fetched address from Firebase: $orderAddress")
+                        if (snapshot.exists()) {
+                            for (orderSnapshot in snapshot.children) {
+                                // Lấy địa chỉ
+                                val addressMap = orderSnapshot.child("address").value as? Map<String, Any>
+                                addressMap?.let {
+                                    orderAddress = Address(
+                                        name = it["name"] as? String ?: "",
+                                        phone = it["phone"] as? String ?: "",
+                                        addressDetail = it["addressDetail"] as? String ?: "",
+                                        isDefault = it["isDefault"] as? Boolean ?: false
+                                    )
+                                    Log.d("OrderSuccessScreen", "Fetched address: $orderAddress")
+                                }
+
+                                // Lấy danh sách sản phẩm
+                                val productsList = orderSnapshot.child("products").value as? List<Map<String, Any>>
+                                productsList?.let { products ->
+                                    orderProducts = products.map { productMap ->
+                                        Product(
+                                            name = productMap["name"] as? String ?: "",
+                                            color = productMap["color"] as? String ?: "",
+                                            price = (productMap["price"] as? String) ?: "0",
+                                            quantity = (productMap["quantity"] as? Long)?.toInt() ?: 0,
+                                            imageUrl = productMap["imageUrl"] as? String
+                                        )
+                                    }
+                                    Log.d("OrderSuccessScreen", "Fetched products: $orderProducts")
+                                }
+
+                                // Lấy tổng giá
+                                val totalPriceValue = orderSnapshot.child("totalPrice").value
+                                orderTotalPrice = when (totalPriceValue) {
+                                    is Double -> totalPriceValue
+                                    is Long -> totalPriceValue.toDouble()
+                                    else -> {
+                                        Log.e("OrderSuccessScreen", "Invalid totalPrice format: $totalPriceValue")
+                                        0.0
+                                    }
+                                }
+                                Log.d("OrderSuccessScreen", "Fetched totalPrice: $orderTotalPrice")
                             }
+                        } else {
+                            errorMessage = "Không tìm thấy đơn hàng"
+                            Log.e("OrderSuccessScreen", "No order found")
                         }
+                        isLoading = false
                     }
 
                     override fun onCancelled(error: DatabaseError) {
+                        errorMessage = "Lỗi khi tải đơn hàng: ${error.message}"
                         Log.e("OrderSuccessScreen", "Error fetching order: ${error.message}")
+                        isLoading = false
                     }
                 })
+        } else {
+            errorMessage = "Vui lòng đăng nhập"
+            isLoading = false
         }
     }
 
@@ -928,151 +977,176 @@ fun OrderSuccessScreen(
             )
         }
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .padding(paddingValues)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            item {
-                Icon(
-                    painter = painterResource(id = R.drawable.successful),
-                    contentDescription = "Success",
-                    tint = Color.Unspecified,
-                    modifier = Modifier
-                        .size(100.dp)
-                        .padding(16.dp)
-                )
-
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else if (errorMessage != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
                 Text(
-                    text = "Đặt hàng thành công!",
-                    color = Color(0xFF00C853),
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 24.dp)
+                    text = errorMessage ?: "Lỗi không xác định",
+                    color = Color.Red,
+                    fontSize = 16.sp,
+                    textAlign = TextAlign.Center
                 )
             }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(paddingValues)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                item {
+                    Icon(
+                        painter = painterResource(id = R.drawable.successful),
+                        contentDescription = "Success",
+                        tint = Color.Unspecified,
+                        modifier = Modifier
+                            .size(100.dp)
+                            .padding(16.dp)
+                    )
 
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                ) {
-                    Column(
+                    Text(
+                        text = "Đặt hàng thành công!",
+                        color = Color(0xFF00C853),
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 24.dp)
+                    )
+                }
+
+                item {
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
+                            .padding(vertical = 8.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                     ) {
-                        Text(
-                            text = "Chi tiết đơn hàng",
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 16.dp)
-                        )
-
-                        orderAddress?.let {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
                             Text(
-                                text = "Địa chỉ giao hàng:",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 14.sp
-                            )
-                            Text(
-                                text = "${it.name}\n${it.phone}\n${it.addressDetail}",
+                                text = "Chi tiết đơn hàng",
                                 color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(bottom = 16.dp)
+                            )
+
+                            orderAddress?.let {
+                                Text(
+                                    text = "Địa chỉ giao hàng:",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 14.sp
+                                )
+                                Text(
+                                    text = "${it.name}\n${it.phone}\n${it.addressDetail}",
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontSize = 14.sp,
+                                    modifier = Modifier.padding(bottom = 16.dp)
+                                )
+                            } ?: Text(
+                                text = "Đang tải địa chỉ giao hàng...",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 14.sp,
                                 modifier = Modifier.padding(bottom = 16.dp)
                             )
-                        } ?: Text(
-                            text = "Đang tải địa chỉ giao hàng...",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 14.sp,
-                            modifier = Modifier.padding(bottom = 16.dp)
-                        )
 
+                            Text(
+                                text = "Sản phẩm:",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 14.sp,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                        }
+                    }
+                }
+
+                items(orderProducts) { product ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
                         Text(
-                            text = "Sản phẩm:",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            text = "${product.name} x${product.quantity}",
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 14.sp,
-                            modifier = Modifier.padding(bottom = 8.dp)
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = "${DecimalFormat("#,###").format(product.price.toInt() * product.quantity)}đ",
+                            color = Color(0xFFFF0000),
+                            fontSize = 14.sp
                         )
                     }
                 }
-            }
 
-            items(products) { product ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "${product.title} x${product.quantity}",
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontSize = 14.sp,
-                        modifier = Modifier.weight(1f)
+                item {
+                    Divider(
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+                        modifier = Modifier.padding(vertical = 16.dp)
                     )
-                    Text(
-                        text = "${DecimalFormat("#,###").format(product.price.toInt() * product.quantity)}đ",
-                        color = Color(0xFFFF0000),
-                        fontSize = 14.sp
-                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Tổng cộng:",
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "${DecimalFormat("#,###").format(orderTotalPrice.toInt())}đ",
+                            color = Color(0xFFFF0000),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
-            }
 
-            item {
-                Divider(
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
-                    modifier = Modifier.padding(vertical = 16.dp)
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Tổng cộng:",
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "${DecimalFormat("#,###").format(totalPrice.toInt())}đ",
-                        color = Color(0xFFFF0000),
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-
-            item {
-                Button(
-                    onClick = {
-                        val intent = Intent(navController.context, MainActivity::class.java).apply {
-                            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                        }
-                        navController.context.startActivity(intent)
-                        (navController.context as? ComponentActivity)?.finish()
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 24.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFFF0000),
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                ) {
-                    Text(
-                        text = "Trở về trang chủ",
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                item {
+                    Button(
+                        onClick = {
+                            val intent = Intent(navController.context, MainActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            }
+                            navController.context.startActivity(intent)
+                            (navController.context as? ComponentActivity)?.finish()
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFFF0000),
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                    ) {
+                        Text(
+                            text = "Trở về trang chủ",
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
