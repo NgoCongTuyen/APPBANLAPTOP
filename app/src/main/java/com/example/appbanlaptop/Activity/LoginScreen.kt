@@ -2,6 +2,7 @@ package com.example.appbanlaptop.Activity
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -230,31 +231,53 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
         }
         item {
             // Biểu tượng mạng xã hội
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp), // Thêm padding để không sát mép
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = { viewModel.onSocialLoginClicked("Facebook", onGoogleSignInClicked) }) {
-                    Image(
-                        painter = painterResource(id = R.drawable.facebook),
-                        contentDescription = "Facebook",
-                        modifier = Modifier.size(40.dp)
-                    )
+                Box(
+                    modifier = Modifier
+                        .height(55.dp) // Chiều cao cố định
+                        .fillMaxWidth(0.85f) // Chiếm 80% chiều rộng để kéo dài
+                        .background(
+                            color = Color.White, // Màu nền trắng
+                            shape = RoundedCornerShape(12.dp) // Bo góc
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = Color.Gray.copy(alpha = 0.2f), // Viền nhẹ
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .clickable { viewModel.onSocialLoginClicked("Google", onGoogleSignInClicked) }, // Xử lý click
+                    contentAlignment = Alignment.CenterStart // Căn trái nội dung
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp), // Padding bên trong
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.google),
+                            contentDescription = "Google",
+                            modifier = Modifier.size(35.dp) // Kích thước ảnh Google
+                        )
+                        Spacer(modifier = Modifier.width(14.dp)) // Khoảng cách giữa biểu tượng và chữ
+                        Text(
+                            text = "Đăng nhập bằng Google",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.Black
+                        )
+                    }
                 }
-                Spacer(modifier = Modifier.width(16.dp))
-                IconButton(onClick = { viewModel.onSocialLoginClicked("Google", onGoogleSignInClicked) }) {
-                    Image(
-                        painter = painterResource(id = R.drawable.google),
-                        contentDescription = "Google",
-                        modifier = Modifier.size(40.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(16.dp))
             }
         }
     }

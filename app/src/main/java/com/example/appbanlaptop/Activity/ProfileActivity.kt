@@ -238,52 +238,52 @@ fun ProfileScreen(
             }
 
             // Card 2: Thông tin bổ sung (ngày tham gia, số đơn hàng)
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .wrapContentHeight()
-                        .shadow(8.dp, shape = RoundedCornerShape(16.dp)),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (isDarkMode) Color(0xFF1E1E1E) else Color.White
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalAlignment = Alignment.Start
-                    ) {
-                        Text(
-                            text = "Thông tin tài khoản",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isDarkMode) Color.White else Color.Black
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        createdAt.value?.let { timestamp ->
-                            Text(
-                                text = "Ngày tham gia: ${SimpleDateFormat("dd/MM/yyyy").format(Date(timestamp))}",
-                                fontSize = 16.sp,
-                                color = if (isDarkMode) Color.LightGray else Color.Gray
-                            )
-                        } ?: Text(
-                            text = "Ngày tham gia: ...",
-                            fontSize = 16.sp,
-                            color = if (isDarkMode) Color.LightGray else Color.Gray
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Text(
-                            text = "Số đơn hàng: ...",
-                            fontSize = 16.sp,
-                            color = if (isDarkMode) Color.LightGray else Color.Gray
-                        )
-                    }
-                }
-            }
+//            item {
+//                Card(
+//                    modifier = Modifier
+//                        .fillMaxWidth()
+//                        .wrapContentHeight()
+//                        .shadow(8.dp, shape = RoundedCornerShape(16.dp)),
+//                    shape = RoundedCornerShape(16.dp),
+//                    colors = CardDefaults.cardColors(
+//                        containerColor = if (isDarkMode) Color(0xFF1E1E1E) else Color.White
+//                    )
+//                ) {
+//                    Column(
+//                        modifier = Modifier
+//                            .fillMaxWidth()
+//                            .padding(16.dp),
+//                        horizontalAlignment = Alignment.Start
+//                    ) {
+//                        Text(
+//                            text = "Thông tin tài khoản",
+//                            fontSize = 18.sp,
+//                            fontWeight = FontWeight.Bold,
+//                            color = if (isDarkMode) Color.White else Color.Black
+//                        )
+//                        Spacer(modifier = Modifier.height(8.dp))
+//
+//                        createdAt.value?.let { timestamp ->
+//                            Text(
+//                                text = "Ngày tham gia: ${SimpleDateFormat("dd/MM/yyyy").format(Date(timestamp))}",
+//                                fontSize = 16.sp,
+//                                color = if (isDarkMode) Color.LightGray else Color.Gray
+//                            )
+//                        } ?: Text(
+//                            text = "Ngày tham gia: ...",
+//                            fontSize = 16.sp,
+//                            color = if (isDarkMode) Color.LightGray else Color.Gray
+//                        )
+//                        Spacer(modifier = Modifier.height(8.dp))
+//
+//                        Text(
+//                            text = "Số đơn hàng: ...",
+//                            fontSize = 16.sp,
+//                            color = if (isDarkMode) Color.LightGray else Color.Gray
+//                        )
+//                    }
+//                }
+//            }
 
             // Card 3: Cài đặt (bao gồm nút chuyển dark/light mode)
             item {

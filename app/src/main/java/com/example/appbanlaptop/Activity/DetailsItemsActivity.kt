@@ -124,7 +124,6 @@ class DetailsItemsActivity : ComponentActivity() {
                             quantity = 1,
                             isSelected = true
                         )
-
                         // Tạo danh sách sản phẩm để thanh toán
                         val checkoutItems = listOf(cartItem)
 
@@ -341,37 +340,37 @@ fun DetailsItemsScreen(
             }
 
             // Các mô hình (model)
-            if (models.isNotEmpty()) {
-                item {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "Phiên bản",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    LazyRow(
-                        modifier = Modifier.padding(top = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(models) { model ->
-                            Surface(
-                                modifier = Modifier.padding(5.dp),
-                                color = MaterialTheme.colorScheme.surface,
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text(
-                                    text = model,
-                                    fontSize = 14.sp,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.padding(8.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
+//            if (models.isNotEmpty()) {
+//                item {
+//                    Spacer(modifier = Modifier.height(16.dp))
+//                    Text(
+//                        text = "Phiên bản",
+//                        fontSize = 18.sp,
+//                        fontWeight = FontWeight.Bold,
+//                        color = MaterialTheme.colorScheme.onBackground
+//                    )
+//                    Spacer(modifier = Modifier.height(10.dp))
+//                    LazyRow(
+//                        modifier = Modifier.padding(top = 8.dp),
+//                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+//                    ) {
+//                        items(models) { model ->
+//                            Surface(
+//                                modifier = Modifier.padding(5.dp),
+//                                color = MaterialTheme.colorScheme.surface,
+//                                shape = RoundedCornerShape(8.dp)
+//                            ) {
+//                                Text(
+//                                    text = model,
+//                                    fontSize = 14.sp,
+//                                    color = MaterialTheme.colorScheme.onSurface,
+//                                    modifier = Modifier.padding(8.dp)
+//                                )
+//                            }
+//                        }
+//                    }
+//                }
+//            }
 
             // Nút Add to Cart và Buy Now
             item {
