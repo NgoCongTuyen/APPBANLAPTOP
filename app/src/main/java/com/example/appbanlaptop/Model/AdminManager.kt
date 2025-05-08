@@ -326,7 +326,6 @@ object UserManager {
     }
 }
 
-// Manager cho Category
 object CategoryManager {
     private val database = FirebaseDatabase.getInstance()
     private val categoriesRef = database.getReference("Category")
@@ -340,9 +339,12 @@ object CategoryManager {
     }
 
     fun addCategory(category: Category, onSuccess: () -> Unit, onError: (String) -> Unit) {
-        val newRef = categoriesRef.push()
-        val categoryWithId = category.copy(id = categories.size)
-        newRef.setValue(categoryWithId)
+        // Lấy ID mới dựa trên số lượng category hiện tại
+        val newId = categories.size
+        val categoryWithId = category.copy(id = newId)
+
+        // Sử dụng newId làm key thay vì push()
+        categoriesRef.child(newId.toString()).setValue(categoryWithId)
             .addOnSuccessListener {
                 onSuccess()
             }
@@ -372,11 +374,47 @@ object CategoryManager {
         }
         categoriesRef.child(categoryId.toString()).removeValue()
             .addOnSuccessListener {
-                onSuccess()
+                // Sau khi xóa, cập nhật lại ID của các category
+                reindexCategories(categoryId, onSuccess)
             }
             .addOnFailureListener {
                 onError(it.message ?: "Unknown error")
             }
+    }
+
+    private fun reindexCategories(deletedId: Int, onSuccess: () -> Unit) {
+        // Lấy tất cả category hiện tại
+        categoriesRef.get().addOnSuccessListener { snapshot ->
+            val updates = mutableMapOf<String, Any?>()
+
+            // Duyệt qua các category và cập nhật ID cho những category có ID > deletedId
+            for (item in snapshot.children) {
+                val currentId = item.key?.toIntOrNull()
+                if (currentId != null && currentId > deletedId) {
+                    val category = item.getValue(Category::class.java)?.copy(id = currentId - 1)
+                    if (category != null) {
+                        // Xóa node cũ và thêm node mới với ID mới
+                        updates["${currentId}"] = null
+                        updates["${currentId - 1}"] = category
+                    }
+                }
+            }
+
+            // Thực hiện cập nhật
+            if (updates.isNotEmpty()) {
+                categoriesRef.updateChildren(updates)
+                    .addOnSuccessListener {
+                        onSuccess()
+                    }
+                    .addOnFailureListener {
+                        Log.e("CategoryManager", "Failed to reindex categories: ${it.message}")
+                    }
+            } else {
+                onSuccess() // Nếu không có gì cần cập nhật, gọi onSuccess ngay
+            }
+        }.addOnFailureListener {
+            Log.e("CategoryManager", "Failed to fetch categories for reindexing: ${it.message}")
+        }
     }
 
     private fun setupListener() {
@@ -386,16 +424,18 @@ object CategoryManager {
                 categories.clear()
                 for (item in snapshot.children) {
                     try {
-                        val id = item.child("id").getValue(Int::class.java)
+                        val id = item.key?.toIntOrNull() // Lấy key làm ID
                         val title = item.child("title").getValue(String::class.java)
                         val picUrl = item.child("picUrl").getValue(String::class.java)
-                        val category = Category(id, title, picUrl)
-                        categories.add(category)
+                        if (id != null) {
+                            val category = Category(id, title, picUrl)
+                            categories.add(category)
+                        }
                     } catch (e: Exception) {
                         Log.e("CategoryManager", "Error parsing category: ${item.key}, error: ${e.message}")
                     }
                 }
-                _categoriesFlow.value = categories.toList()
+                _categoriesFlow.value = categories.sortedBy { it.id }.toList() // Sắp xếp theo ID
             }
 
             override fun onCancelled(error: DatabaseError) {
