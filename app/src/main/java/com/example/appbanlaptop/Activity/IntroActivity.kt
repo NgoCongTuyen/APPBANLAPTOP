@@ -82,34 +82,38 @@ fun IntroScreen(onClick: () -> Unit = {}) {
             painter = painterResource(id = R.drawable.intro_logo),
             contentDescription = "Intro Logo",
             modifier = Modifier.fillMaxWidth()
+                .weight(4f)
         )
-        Spacer(Modifier.height(32.dp))
 
-        Text(
-            text = stringResource(id = R.string.intro_title),
-            modifier = Modifier.padding(top = 16.dp),
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-            textAlign = TextAlign.Center
-        )
-        Spacer(modifier = Modifier.height(32.dp))
 
-        Text(
-            text = stringResource(id = R.string.intro_sub_title),
-            modifier = Modifier.padding(top = 16.dp),
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-            textAlign = TextAlign.Center,
-            lineHeight = 20.sp
-        )
-        Spacer(modifier = Modifier.height(32.dp))
+        Column(
+            modifier = Modifier.weight(4f)
+                .padding(top = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = stringResource(id = R.string.intro_title),
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = stringResource(id = R.string.intro_sub_title),
+                modifier = Modifier.padding(top = 16.dp), // Giảm padding từ 16.dp xuống 8.dp
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center,
+                lineHeight = 20.sp
+            )
+        }
 
         Button(
             onClick = { onClick() },
             modifier = Modifier
                 .padding(horizontal = 32.dp, vertical = 16.dp)
                 .fillMaxWidth()
-                .height(50.dp),
+                .height(50.dp)
+                .weight(1f),
             colors = ButtonDefaults.buttonColors(
                 containerColor = colorResource(R.color.purple_200),
                 contentColor = MaterialTheme.colorScheme.onPrimary
