@@ -48,11 +48,126 @@ import com.example.appbanlaptop.Activity.ThemeManager
 // Định nghĩa nguồn dữ liệu chung
 object AddressState {
     val newAddress = mutableStateOf<Address?>(null)
-    val addresses = mutableStateListOf(
-        Address("Nguyễn Thanh Đức", "(+84)03****3838", "59/22C Mã Lò, Bình Trị Đông A, Bình Tân, Hồ Chí Minh, Việt Nam", true),
-        Address("Hương", "(+84)84****30", "ngõ 87 ngách 43 số nhà 10, Yên Nghĩa, Hà Đông, Hà Nội, Việt Nam", false),
-        Address("Mai Hương", "(+84)84****30", "số 1 ngõ 25, thôn Bảo Lộc 4, Võng Xuyên, Phúc Thọ, Hà Nội, Việt Nam", false)
-    )
+    val addresses = mutableStateListOf<Address>()
+
+    fun loadAddresses(userId: String, onComplete: () -> Unit = {}) {
+        val database = FirebaseDatabase.getInstance()
+        val addressesRef = database.getReference("addresses").child(userId)
+
+        addressesRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                addresses.clear()
+                for (addressSnapshot in snapshot.children) {
+                    try {
+                        val addressMap = addressSnapshot.value as? Map<String, Any>
+                        addressMap?.let {
+                            val address = Address(
+                                name = it["name"] as? String ?: "",
+                                phone = it["phone"] as? String ?: "",
+                                addressDetail = it["addressDetail"] as? String ?: "",
+                                isDefault = it["isDefault"] as? Boolean ?: false
+                            )
+                            addresses.add(address)
+                        }
+                    } catch (e: Exception) {
+                        Log.e("AddressState", "Error parsing address: ${e.message}")
+                    }
+                }
+                onComplete()
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("AddressState", "Error loading addresses: ${error.message}")
+                onComplete()
+            }
+        })
+    }
+
+    fun saveAddress(userId: String, address: Address, onComplete: () -> Unit = {}) {
+        val database = FirebaseDatabase.getInstance()
+        val addressesRef = database.getReference("addresses").child(userId)
+
+        // Nếu địa chỉ mới là mặc định, cập nhật tất cả địa chỉ khác thành không mặc định
+        if (address.isDefault) {
+            addressesRef.get().addOnSuccessListener { snapshot ->
+                for (addressSnapshot in snapshot.children) {
+                    addressSnapshot.ref.child("isDefault").setValue(false)
+                }
+                // Sau đó lưu địa chỉ mới
+                saveNewAddress(addressesRef, address, onComplete)
+            }
+        } else {
+            saveNewAddress(addressesRef, address, onComplete)
+        }
+    }
+
+    private fun saveNewAddress(addressesRef: DatabaseReference, address: Address, onComplete: () -> Unit) {
+        val newAddressRef = addressesRef.push()
+        val addressMap = mapOf(
+            "name" to address.name,
+            "phone" to address.phone,
+            "addressDetail" to address.addressDetail,
+            "isDefault" to address.isDefault
+        )
+
+        newAddressRef.setValue(addressMap)
+            .addOnSuccessListener {
+                Log.d("AddressState", "Address saved successfully")
+                onComplete()
+            }
+            .addOnFailureListener { e ->
+                Log.e("AddressState", "Error saving address: ${e.message}")
+                onComplete()
+            }
+    }
+
+    fun updateAddress(userId: String, oldAddress: Address, newAddress: Address, onComplete: () -> Unit = {}) {
+        val database = FirebaseDatabase.getInstance()
+        val addressesRef = database.getReference("addresses").child(userId)
+
+        // Nếu địa chỉ mới là mặc định, cập nhật tất cả địa chỉ khác thành không mặc định
+        if (newAddress.isDefault) {
+            addressesRef.get().addOnSuccessListener { snapshot ->
+                for (addressSnapshot in snapshot.children) {
+                    addressSnapshot.ref.child("isDefault").setValue(false)
+                }
+                // Sau đó cập nhật địa chỉ
+                updateExistingAddress(addressesRef, oldAddress, newAddress, onComplete)
+            }
+        } else {
+            updateExistingAddress(addressesRef, oldAddress, newAddress, onComplete)
+        }
+    }
+
+    private fun updateExistingAddress(addressesRef: DatabaseReference, oldAddress: Address, newAddress: Address, onComplete: () -> Unit) {
+        addressesRef.orderByChild("addressDetail").equalTo(oldAddress.addressDetail)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    for (addressSnapshot in snapshot.children) {
+                        val addressMap = mapOf(
+                            "name" to newAddress.name,
+                            "phone" to newAddress.phone,
+                            "addressDetail" to newAddress.addressDetail,
+                            "isDefault" to newAddress.isDefault
+                        )
+                        addressSnapshot.ref.setValue(addressMap)
+                            .addOnSuccessListener {
+                                Log.d("AddressState", "Address updated successfully")
+                                onComplete()
+                            }
+                            .addOnFailureListener { e ->
+                                Log.e("AddressState", "Error updating address: ${e.message}")
+                                onComplete()
+                            }
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("AddressState", "Error finding address to update: ${error.message}")
+                    onComplete()
+                }
+            })
+    }
 }
 
 class PaymentActivity : ComponentActivity() {
@@ -105,7 +220,22 @@ class PaymentActivity : ComponentActivity() {
 @Composable
 fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, totalPriceFromIntent: Double) {
     var selectedAddress by remember {
-        mutableStateOf(AddressState.addresses.firstOrNull { it.isDefault } ?: AddressState.addresses.firstOrNull())
+        mutableStateOf<Address?>(null)
+    }
+    var isLoading by remember { mutableStateOf(true) }
+
+    // Load addresses when screen is created
+    LaunchedEffect(Unit) {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+        if (userId != null) {
+            AddressState.loadAddresses(userId) {
+                // Select default address after loading
+                selectedAddress = AddressState.addresses.firstOrNull { it.isDefault } ?: AddressState.addresses.firstOrNull()
+                isLoading = false
+            }
+        } else {
+            isLoading = false
+        }
     }
 
     val backStackEntry = navController.currentBackStackEntry
@@ -121,14 +251,14 @@ fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, t
 
     AddressState.newAddress.value?.let { newAddress ->
         Log.d("PaymentScreen", "New address detected: $newAddress")
-        if (newAddress.isDefault) {
-            AddressState.addresses.forEachIndexed { index, address ->
-                AddressState.addresses[index] = address.copy(isDefault = false)
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+        if (userId != null) {
+            AddressState.saveAddress(userId, newAddress) {
+                AddressState.addresses.add(newAddress)
+                selectedAddress = newAddress
+                AddressState.newAddress.value = null
             }
         }
-        AddressState.addresses.add(newAddress)
-        selectedAddress = newAddress
-        AddressState.newAddress.value = null
     }
 
     // Chuyển đổi CartItem sang Product
@@ -382,6 +512,7 @@ fun AddAddressScreen(navController: NavController, addressToEdit: Address?) {
     var newWard by remember { mutableStateOf(addressToEdit?.addressDetail?.split(", ")?.getOrNull(1) ?: "") }
     var newAddressDetail by remember { mutableStateOf(addressToEdit?.addressDetail?.split(", ")?.getOrNull(0) ?: "") }
     var isDefault by remember { mutableStateOf(addressToEdit?.isDefault ?: false) }
+    var isLoading by remember { mutableStateOf(false) }
 
     val isNameValid = newName.isNotBlank()
     val isPhoneValid = newPhone.isNotBlank() && newPhone.length == 10 && newPhone.startsWith("0") && newPhone.all { it.isDigit() }
@@ -406,47 +537,59 @@ fun AddAddressScreen(navController: NavController, addressToEdit: Address?) {
         bottomBar = {
             Button(
                 onClick = {
-                    Log.d("AddAddressScreen", "Bước 1: Nút Lưu được nhấn")
+                    isLoading = true
+                    val userId = FirebaseAuth.getInstance().currentUser?.uid
+                    if (userId == null) {
+                        android.widget.Toast.makeText(navController.context, "Vui lòng đăng nhập để thêm địa chỉ", android.widget.Toast.LENGTH_SHORT).show()
+                        isLoading = false
+                        return@Button
+                    }
+
                     val updatedAddress = Address(
                         name = newName,
                         phone = newPhone,
                         addressDetail = "$newAddressDetail, $newWard, $newDistrict, $newProvince",
                         isDefault = isDefault
                     )
-                    Log.d("AddAddressScreen", "Bước 2: Địa chỉ đã cập nhật: $updatedAddress")
+
                     if (addressToEdit == null) {
                         // Thêm mới
-                        AddressState.newAddress.value = updatedAddress
-                        Log.d("AddAddressScreen", "Bước 3: Đã lưu new_address vào AddressState: ${AddressState.newAddress.value}")
-                        navController.popBackStack("payment", inclusive = false)
+                        AddressState.saveAddress(userId, updatedAddress) {
+                            AddressState.newAddress.value = updatedAddress
+                            isLoading = false
+                            navController.popBackStack("payment", inclusive = false)
+                        }
                     } else {
                         // Chỉnh sửa
-                        val index = AddressState.addresses.indexOf(addressToEdit)
-                        if (index != -1) {
-                            if (updatedAddress.isDefault) {
-                                AddressState.addresses.forEachIndexed { i, addr ->
-                                    AddressState.addresses[i] = addr.copy(isDefault = false)
-                                }
+                        AddressState.updateAddress(userId, addressToEdit, updatedAddress) {
+                            val index = AddressState.addresses.indexOf(addressToEdit)
+                            if (index != -1) {
+                                AddressState.addresses[index] = updatedAddress
                             }
-                            AddressState.addresses[index] = updatedAddress
-                            Log.d("AddAddressScreen", "Bước 3: Đã cập nhật địa chỉ tại index $index: ${AddressState.addresses}")
+                            isLoading = false
                             navController.popBackStack("address_list", inclusive = false)
                         }
                     }
-                    Log.d("AddAddressScreen", "Bước 4: Đã gọi popBackStack")
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                enabled = isFormValid,
+                enabled = isFormValid && !isLoading,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isFormValid) Color(0xFFFF0000) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    containerColor = if (isFormValid && !isLoading) Color(0xFFFF0000) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                     disabledContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             ) {
-                Text("Lưu", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp)
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    Text("Lưu", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp)
+                }
             }
         }
     ) { paddingValues ->
