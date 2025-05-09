@@ -46,6 +46,7 @@ object BottomActivity {
                 onItemClick = {
                     if (context !is MainActivity) {
                         val intent = Intent(context, MainActivity::class.java)
+                        intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
                         context.startActivity(intent)
                     }
                 }
@@ -56,6 +57,7 @@ object BottomActivity {
                 onItemClick = {
                     if (context !is CartScreenActivity) {
                         val intent = Intent(context, CartScreenActivity::class.java)
+                        intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
                         context.startActivity(intent)
                     }
                 }
@@ -66,6 +68,7 @@ object BottomActivity {
                 onItemClick = {
                     if (context !is OrderActivity) {
                         val intent = Intent(context, OrderActivity::class.java)
+                        intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
                         context.startActivity(intent)
                     }
                 }
@@ -76,6 +79,7 @@ object BottomActivity {
                 onItemClick = {
                     if (context !is ProfileActivity) {
                         val intent = Intent(context, ProfileActivity::class.java)
+                        intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
                         context.startActivity(intent)
                     }
                 }

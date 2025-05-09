@@ -130,6 +130,8 @@ data class CategoryItem(
     val title: String? = null
 )
 
+
+
 @Composable
 fun MainActivityScreen(
     productItems: List<ProductItem>,
@@ -300,32 +302,54 @@ fun MainActivityScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        pair.forEach { product ->
+                        if (pair.size == 1) {
+                            Spacer(modifier = Modifier.weight(1f))
                             Box(
                                 modifier = Modifier
-                                    .weight(1f)
                                     .width(150.dp)
                                     .clickable {
                                         val intent = Intent(context, DetailsItemsActivity::class.java).apply {
-                                            putExtra("PRODUCT_TITLE", product.title)
-                                            putExtra("PRODUCT_DESCRIPTION", product.description)
-                                            putExtra("PRODUCT_PRICE", product.price ?: "0 đ")
-                                            putExtra("PRODUCT_RATING", product.rating ?: 0.0)
-                                            putExtra("PRODUCT_PIC_URL", product.picUrl?.firstOrNull())
-                                            putExtra("PRODUCT_MODELS", product.model?.toTypedArray())
-                                            putExtra("PRODUCT_CATEGORY_ID", product.categoryId)
+                                            putExtra("PRODUCT_TITLE", pair[0].title)
+                                            putExtra("PRODUCT_DESCRIPTION", pair[0].description)
+                                            putExtra("PRODUCT_PRICE", pair[0].price ?: "0 đ")
+                                            putExtra("PRODUCT_RATING", pair[0].rating ?: 0.0)
+                                            putExtra("PRODUCT_PIC_URL", pair[0].picUrl?.firstOrNull())
+                                            putExtra("PRODUCT_MODELS", pair[0].model?.toTypedArray())
+                                            putExtra("PRODUCT_CATEGORY_ID", pair[0].categoryId)
                                         }
                                         context.startActivity(intent)
                                     }
                             ) {
-                                ProductItem(product = product)
+                                ProductItem(product = pair[0])
                             }
-                        }
-                        if (pair.size < 2) {
-                            Spacer(modifier = Modifier.weight(0.6f))
+                            Spacer(modifier = Modifier.weight(1f))
+                        } else {
+                            pair.forEachIndexed { index, product ->
+                                Box(
+                                    modifier = Modifier
+                                        .width(150.dp)
+                                        .clickable {
+                                            val intent = Intent(context, DetailsItemsActivity::class.java).apply {
+                                                putExtra("PRODUCT_TITLE", product.title)
+                                                putExtra("PRODUCT_DESCRIPTION", product.description)
+                                                putExtra("PRODUCT_PRICE", product.price ?: "0 đ")
+                                                putExtra("PRODUCT_RATING", product.rating ?: 0.0)
+                                                putExtra("PRODUCT_PIC_URL", product.picUrl?.firstOrNull())
+                                                putExtra("PRODUCT_MODELS", product.model?.toTypedArray())
+                                                putExtra("PRODUCT_CATEGORY_ID", product.categoryId)
+                                            }
+                                            context.startActivity(intent)
+                                        }
+                                ) {
+                                    ProductItem(product = product)
+                                }
+                                if (index == 0) {
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                }
+                            }
                         }
                     }
                 }
@@ -357,32 +381,54 @@ fun MainActivityScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        pair.forEach { product ->
+                        if (pair.size == 1) {
+                            Spacer(modifier = Modifier.weight(1f))
                             Box(
                                 modifier = Modifier
-                                    .weight(1f)
-                                    .width(150.dp)
+                                    .width(155.dp)
                                     .clickable {
                                         val intent = Intent(context, DetailsItemsActivity::class.java).apply {
-                                            putExtra("PRODUCT_TITLE", product.title)
-                                            putExtra("PRODUCT_DESCRIPTION", product.description)
-                                            putExtra("PRODUCT_PRICE", product.price ?: "0 đ")
-                                            putExtra("PRODUCT_RATING", product.rating ?: 0.0)
-                                            putExtra("PRODUCT_PIC_URL", product.picUrl?.firstOrNull())
-                                            putExtra("PRODUCT_MODELS", product.model?.toTypedArray())
-                                            putExtra("PRODUCT_CATEGORY_ID", product.categoryId)
+                                            putExtra("PRODUCT_TITLE", pair[0].title)
+                                            putExtra("PRODUCT_DESCRIPTION", pair[0].description)
+                                            putExtra("PRODUCT_PRICE", pair[0].price ?: "0 đ")
+                                            putExtra("PRODUCT_RATING", pair[0].rating ?: 0.0)
+                                            putExtra("PRODUCT_PIC_URL", pair[0].picUrl?.firstOrNull())
+                                            putExtra("PRODUCT_MODELS", pair[0].model?.toTypedArray())
+                                            putExtra("PRODUCT_CATEGORY_ID", pair[0].categoryId)
                                         }
                                         context.startActivity(intent)
                                     }
                             ) {
-                                ProductItem(product = product)
+                                ProductItem(product = pair[0])
                             }
-                        }
-                        if (pair.size < 2) {
-                            Spacer(modifier = Modifier.weight(0.6f))
+                            Spacer(modifier = Modifier.weight(1f))
+                        } else {
+                            pair.forEachIndexed { index, product ->
+                                Box(
+                                    modifier = Modifier
+                                        .width(155.dp)
+                                        .clickable {
+                                            val intent = Intent(context, DetailsItemsActivity::class.java).apply {
+                                                putExtra("PRODUCT_TITLE", product.title)
+                                                putExtra("PRODUCT_DESCRIPTION", product.description)
+                                                putExtra("PRODUCT_PRICE", product.price ?: "0 đ")
+                                                putExtra("PRODUCT_RATING", product.rating ?: 0.0)
+                                                putExtra("PRODUCT_PIC_URL", product.picUrl?.firstOrNull())
+                                                putExtra("PRODUCT_MODELS", product.model?.toTypedArray())
+                                                putExtra("PRODUCT_CATEGORY_ID", product.categoryId)
+                                            }
+                                            context.startActivity(intent)
+                                        }
+                                ) {
+                                    ProductItem(product = product)
+                                }
+                                if (index == 0) {
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                }
+                            }
                         }
                     }
                 }
@@ -432,23 +478,20 @@ fun CategoryItem(
 ) {
     Column(
         modifier = Modifier
-            .clickable(onClick = onItemClick).fillMaxWidth(),
+            .clickable(onClick = onItemClick)
+            .padding(4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
             modifier = Modifier
                 .size(50.dp)
                 .background(
-                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
                     shape = RoundedCornerShape(8.dp)
-                )
-                .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f), RoundedCornerShape(8.dp)),
+                ),
             contentAlignment = Alignment.Center
         ) {
             item.picUrl?.let { imageUrl ->
-                var isImageLoading by remember { mutableStateOf(true) }
-                var isImageError by remember { mutableStateOf(false) }
-
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(imageUrl)
@@ -461,40 +504,8 @@ fun CategoryItem(
                         .clip(RoundedCornerShape(8.dp)),
                     contentScale = ContentScale.Fit,
                     placeholder = painterResource(R.drawable.loadding),
-                    error = painterResource(R.drawable.error),
-                    colorFilter = if (isSelected) ColorFilter.tint(MaterialTheme.colorScheme.onPrimary) else null,
-                    onLoading = { isImageLoading = true },
-                    onSuccess = {
-                        isImageLoading = false
-                        isImageError = false
-                    },
-                    onError = {
-                        isImageLoading = false
-                        isImageError = true
-                    }
+                    error = painterResource(R.drawable.error)
                 )
-
-                if (isImageLoading) {
-                    Text(
-                        text = "Đang tải...",
-                        fontSize = 7.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
-                            .padding(2.dp)
-                    )
-                } else if (isImageError) {
-                    Text(
-                        text = "Lỗi",
-                        fontSize = 10.sp,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
-                            .padding(2.dp)
-                    )
-                }
             } ?: run {
                 Image(
                     painter = painterResource(R.drawable.loadding),
@@ -502,19 +513,9 @@ fun CategoryItem(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(RoundedCornerShape(8.dp)),
-                    contentScale = ContentScale.Fit,
-                    colorFilter = if (isSelected) ColorFilter.tint(MaterialTheme.colorScheme.onPrimary) else null
+                    contentScale = ContentScale.Fit
                 )
             }
-        }
-        if (isSelected) {
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = item.title ?: "Không có tiêu đề",
-                color = MaterialTheme.colorScheme.onBackground,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold
-            )
         }
     }
 }
@@ -539,129 +540,85 @@ fun SectionTitle(title: String) {
 
 @Composable
 fun ProductItem(product: ProductItem) {
-    Column(
+    Box(
         modifier = Modifier
-            .width(155.dp)
+            .width(200.dp)
             .height(230.dp)
-            .background(MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(12.dp))
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+            .background(Color(0xFFE3F2FD), shape = RoundedCornerShape(8.dp)) // Màu trắng cho Box toàn bộ
     ) {
-        Box(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(140.dp)
-                .background(MaterialTheme.colorScheme.background, shape = RoundedCornerShape(8.dp)),
-            contentAlignment = Alignment.Center
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            product.picUrl?.takeIf { it.isNotEmpty() }?.let { imageUrls ->
-                val imageUrl = imageUrls[0]
-                var isImageLoading by remember { mutableStateOf(true) }
-                var isImageError by remember { mutableStateOf(false) }
-
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(imageUrl)
-                        .memoryCachePolicy(CachePolicy.ENABLED)
-                        .diskCachePolicy(CachePolicy.ENABLED)
-                        .build(),
-                    contentDescription = product.title,
-                    modifier = Modifier
-                        .fillMaxSize(0.9f)
-                        .clip(RoundedCornerShape(8.dp)),
-                    contentScale = ContentScale.Fit,
-                    placeholder = painterResource(R.drawable.loadding),
-                    error = painterResource(R.drawable.error),
-                    onLoading = { isImageLoading = true },
-                    onSuccess = {
-                        isImageLoading = false
-                        isImageError = false
-                    },
-                    onError = { state ->
-                        isImageLoading = false
-                        isImageError = true
-                        Log.e("ProductItem", "Error loading image: $imageUrl, error: ${state.result.throwable.message}")
-                    }
-                )
-
-                if (isImageLoading) {
-                    Text(
-                        text = "Đang tải...",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(140.dp)
+                    .background(Color.White, shape = RoundedCornerShape(12.dp))  // Màu xám nhạt cho Box chứa ảnh
+                    .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f), RoundedCornerShape(8.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                product.picUrl?.takeIf { it.isNotEmpty() }?.let { imageUrls ->
+                    val imageUrl = imageUrls[0]
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(imageUrl)
+                            .memoryCachePolicy(CachePolicy.ENABLED)
+                            .diskCachePolicy(CachePolicy.ENABLED)
+                            .build(),
+                        contentDescription = product.title,
                         modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
-                            .padding(4.dp)
+                            .fillMaxSize(0.9f)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Fit,
+                        placeholder = painterResource(R.drawable.loadding),
+                        error = painterResource(R.drawable.error)
                     )
-                } else if (isImageError) {
-                    Text(
-                        text = "Lỗi tải hình ảnh",
-                        fontSize = 12.sp,
-                        color = Color.Red,
+                } ?: run {
+                    Image(
+                        painter = painterResource(R.drawable.loadding),
+                        contentDescription = "Placeholder",
                         modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
-                            .padding(4.dp)
+                            .fillMaxSize(0.8f)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Fit
                     )
                 }
-            } ?: run {
-                Image(
-                    painter = painterResource(R.drawable.loadding),
-                    contentDescription = "Placeholder",
-                    modifier = Modifier
-                        .fillMaxSize(0.8f)
-                        .clip(RoundedCornerShape(8.dp)),
-                    contentScale = ContentScale.Fit
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = product.title ?: "Không có tiêu đề",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "⭐ ${product.rating?.toFloat() ?: 0f}",
+                    fontSize = 12.sp,
+                    color = Color(0xFFFFC107)
                 )
                 Text(
-                    text = "Không có hình ảnh",
+                    text = buildAnnotatedString {
+                        append(product.price ?: "0")
+                        withStyle(SpanStyle(fontSize = 10.sp, baselineShift = BaselineShift.Superscript)) {
+                            append("đ")
+                        }
+                    },
                     fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
-                        .padding(4.dp)
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Red
                 )
             }
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = product.title ?: "Không có tiêu đề",
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                text = "⭐ ${product.rating?.toFloat() ?: 0f}",
-                fontSize = 12.sp,
-                color = Color(0xFFFFC107)
-            )
-            Spacer(modifier = Modifier.width(10.dp))
-            Text(
-                text = buildAnnotatedString {
-                    append("${product.price ?: 0}")
-                    withStyle(
-                        style = SpanStyle(
-                            fontSize = 10.sp,
-                            baselineShift = BaselineShift.Superscript
-                        )
-                    ) {
-                        append("đ")
-                    }
-                },
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Red
-            )
         }
     }
 }
