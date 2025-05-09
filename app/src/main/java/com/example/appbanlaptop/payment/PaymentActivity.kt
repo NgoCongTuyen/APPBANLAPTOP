@@ -43,6 +43,11 @@ import coil.request.ImageRequest
 import java.text.DecimalFormat
 import android.util.Log
 import androidx.compose.foundation.Image
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.AddLocation
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Phone
 import com.example.appbanlaptop.Activity.ThemeManager
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -286,12 +291,10 @@ class PaymentActivity : ComponentActivity() {
 fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, totalPriceFromIntent: Double) {
     var isLoading by remember { mutableStateOf(true) }
 
-    // Load addresses when screen is created
     LaunchedEffect(Unit) {
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         if (userId != null) {
             AddressState.loadAddresses(userId) {
-                // Nếu chưa có địa chỉ được chọn, chọn địa chỉ mặc định hoặc đầu tiên
                 if (AddressState.selectedAddress.value == null) {
                     AddressState.selectAddress(
                         AddressState.addresses.firstOrNull { it.isDefault } ?: AddressState.addresses.firstOrNull()
@@ -304,21 +307,17 @@ fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, t
         }
     }
 
-    // Xử lý địa chỉ được chọn từ AddressListScreen
     val backStackEntry = navController.currentBackStackEntry
     val selectedFromList = backStackEntry?.savedStateHandle?.get<Address>("selected_address")
 
     LaunchedEffect(selectedFromList) {
         selectedFromList?.let { address ->
-            Log.d("PaymentScreen", "Selected address from AddressListScreen: $address")
             AddressState.selectAddress(address)
             backStackEntry.savedStateHandle.remove<Address>("selected_address")
         }
     }
 
-    // Xử lý địa chỉ mới được thêm
     AddressState.newAddress.value?.let { newAddress ->
-        Log.d("PaymentScreen", "New address detected: $newAddress")
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         if (userId != null) {
             AddressState.saveAddress(userId, newAddress) {
@@ -329,27 +328,16 @@ fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, t
         }
     }
 
-    // Chuyển đổi CartItem sang Product
     val products = remember(checkoutItems) {
         mutableStateListOf<Product>().apply {
-            try {
-                addAll(checkoutItems.map { Product.fromCartItem(it) })
-            } catch (e: Exception) {
-                Log.e("PaymentScreen", "Error mapping CartItem to Product: ${e.message}", e)
-            }
+            addAll(checkoutItems.map { Product.fromCartItem(it) })
         }
     }
 
-    // Tính tổng giá
     val totalPrice by remember(products) {
         derivedStateOf {
             products.sumOf { product ->
-                try {
-                    product.price.toInt() * product.quantity
-                } catch (e: NumberFormatException) {
-                    Log.e("PaymentScreen", "Error parsing price for product: ${product.name}, price=${product.price}", e)
-                    0
-                }
+                product.price.toInt() * product.quantity
             }.toDouble()
         }
     }
@@ -415,38 +403,274 @@ fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, t
                     .padding(paddingValues),
             ) {
                 item {
-                    ShippingInfo(
-                        selectedAddress = AddressState.selectedAddress.value,
-                        onAddressClick = {
-                            navController.navigate("address_list")
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { navController.navigate("address_list") }
+                                .padding(16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Địa chỉ giao hàng",
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.Edit, // Sử dụng biểu tượng Code từ Icons.Default
+                                    contentDescription = "Code Icon",
+                                    modifier = Modifier.size(20.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            AddressState.selectedAddress.value?.let { address ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.AccountCircle, // Sử dụng biểu tượng Code từ Icons.Default
+                                        contentDescription = "Code Icon",
+                                        modifier = Modifier.size(20.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = address.name,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 14.sp
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Phone, // Sử dụng biểu tượng Code từ Icons.Default
+                                        contentDescription = "Phone Icon",
+                                        modifier = Modifier.size(20.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = address.phone,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 14.sp
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.Top
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.AddLocation, // Sử dụng biểu tượng Code từ Icons.Default
+                                        contentDescription = "Adress Icon",
+                                        modifier = Modifier.size(20.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = address.addressDetail,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 14.sp
+                                    )
+                                }
+                            } ?: Text(
+                                text = "Vui lòng chọn địa chỉ giao hàng",
+                                color = MaterialTheme.colorScheme.error,
+                                fontSize = 14.sp
+                            )
                         }
-                    )
-                }
-                item {
-                    Row(modifier = Modifier.fillMaxWidth().height(2.dp)) {
-                        Box(modifier = Modifier.weight(1f).background(Color(0xFFFF0000)))
-                        Box(modifier = Modifier.weight(1f).background(MaterialTheme.colorScheme.primary))
                     }
                 }
-                item { StoreHeader() }
+
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "ĐPT STORE",
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
                 items(products) { product ->
-                    ProductItem(
-                        product = product,
-                        onQuantityChange = { newQuantity ->
-                            val index = products.indexOf(product)
-                            if (newQuantity >= 1) {
-                                products[index] = product.copy(quantity = newQuantity)
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(product.imageUrl)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = product.name,
+                                modifier = Modifier
+                                    .size(80.dp)
+                                    .clip(RoundedCornerShape(8.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+
+                            Spacer(modifier = Modifier.width(16.dp))
+
+                            Column(
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = product.name,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+
+                                Spacer(modifier = Modifier.height(4.dp))
+
+                                Text(
+                                    text = "${DecimalFormat("#,###").format(product.price.toInt())}đ",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    IconButton(
+                                        onClick = { if (product.quantity > 1) products[products.indexOf(product)] = product.copy(quantity = product.quantity - 1) },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Text("-", color = MaterialTheme.colorScheme.primary)
+                                    }
+                                    Text(
+                                        text = "${product.quantity}",
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.padding(horizontal = 8.dp)
+                                    )
+                                    IconButton(
+                                        onClick = { products[products.indexOf(product)] = product.copy(quantity = product.quantity + 1) },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Text("+", color = MaterialTheme.colorScheme.primary)
+                                    }
+                                }
                             }
                         }
-                    )
-                }
-                item {
-                    Row(modifier = Modifier.fillMaxWidth().height(10.dp)) {
-                        Box(modifier = Modifier.weight(1f).background(Color(0xFFFF0000)))
-                        Box(modifier = Modifier.weight(1f).background(MaterialTheme.colorScheme.primary))
                     }
                 }
-                item { PaymentMethod() }
+
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Text(
+                                text = "Phương thức thanh toán",
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { },
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    RadioButton(
+                                        selected = true,
+                                        onClick = { },
+                                        colors = RadioButtonDefaults.colors(
+                                            selectedColor = MaterialTheme.colorScheme.primary,
+                                            unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Thanh toán khi nhận hàng",
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -488,13 +712,27 @@ fun AddressListScreen(navController: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Địa chỉ của bạn", color = MaterialTheme.colorScheme.onBackground) },
+                title = { 
+                    Text(
+                        "Địa chỉ của bạn",
+                        color = MaterialTheme.colorScheme.onBackground,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Text("<", color = MaterialTheme.colorScheme.onBackground, fontSize = 20.sp)
+                        Icon(
+                            imageVector = Icons.Default.ArrowBackIosNew,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
             )
         },
         bottomBar = {
@@ -503,91 +741,233 @@ fun AddressListScreen(navController: NavController) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF0000))
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
             ) {
-                Text("Thêm địa chỉ mới", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AddLocation,
+                        contentDescription = "Add Address",
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "Thêm địa chỉ mới",
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize()) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
-                    .padding(paddingValues)
-            ) {
-                itemsIndexed(AddressState.addresses) { index, address ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(paddingValues)
+        ) {
+            if (AddressState.addresses.isEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AddLocation,
+                        contentDescription = "No Address",
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Bạn chưa có địa chỉ nào",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 16.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Hãy thêm địa chỉ để tiếp tục",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 14.sp
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    itemsIndexed(AddressState.addresses) { index, address ->
+                        Card(
                             modifier = Modifier
-                                .weight(1f)
-                                .clickable {
-                                    Log.d("AddressListScreen", "Selected address: $address")
-                                    navController.previousBackStackEntry?.savedStateHandle?.set("selected_address", address)
-                                    navController.popBackStack()
-                                }
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                         ) {
-                            Text(
-                                text = address.name,
-                                color = MaterialTheme.colorScheme.onBackground,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = address.phone,
-                                color = MaterialTheme.colorScheme.onBackground,
-                                fontSize = 14.sp
-                            )
-                            Text(
-                                text = address.addressDetail,
-                                color = MaterialTheme.colorScheme.onBackground,
-                                fontSize = 14.sp
-                            )
-                            if (address.isDefault) {
-                                Text(
-                                    text = "Mặc định",
-                                    color = Color(0xFFFF0000),
-                                    fontSize = 12.sp
-                                )
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        navController.previousBackStackEntry?.savedStateHandle?.set("selected_address", address)
+                                        navController.popBackStack()
+                                    }
+                                    .padding(16.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.AccountCircle,
+                                            contentDescription = "Name",
+                                            modifier = Modifier.size(20.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = address.name,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                    if (address.isDefault) {
+                                        Surface(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(16.dp))
+                                                .background(MaterialTheme.colorScheme.primaryContainer),
+                                            color = MaterialTheme.colorScheme.primaryContainer
+                                        ) {
+                                            Text(
+                                                text = "Mặc định",
+                                                color = MaterialTheme.colorScheme.primary,
+                                                fontSize = 12.sp,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Phone,
+                                        contentDescription = "Phone",
+                                        modifier = Modifier.size(20.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = address.phone,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 14.sp
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.Top
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.AddLocation,
+                                        contentDescription = "Address",
+                                        modifier = Modifier.size(20.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = address.addressDetail,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 14.sp
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+                                    TextButton(
+                                        onClick = {
+                                            navController.navigate("edit_address/$index")
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Edit,
+                                            contentDescription = "Edit",
+                                            modifier = Modifier.size(18.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "Chỉnh sửa",
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontSize = 14.sp
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    TextButton(
+                                        onClick = { showDeleteDialog = address }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = "Delete",
+                                            modifier = Modifier.size(18.dp),
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "Xóa",
+                                            color = MaterialTheme.colorScheme.error,
+                                            fontSize = 14.sp
+                                        )
+                                    }
+                                }
                             }
-                        }
-                        Row {
-                            Text(
-                                text = "Chỉnh sửa",
-                                color = Color(0xFFFF0000),
-                                fontSize = 14.sp,
-                                modifier = Modifier
-                                    .padding(end = 8.dp)
-                                    .clickable {
-                                        Log.d("AddressListScreen", "Edit address clicked: $address")
-                                        navController.navigate("edit_address/$index")
-                                    }
-                            )
-                            Text(
-                                text = "Xóa",
-                                color = Color(0xFFFF0000),
-                                fontSize = 14.sp,
-                                modifier = Modifier
-                                    .clickable {
-                                        showDeleteDialog = address
-                                    }
-                            )
                         }
                     }
                 }
             }
 
-            // Dialog xác nhận xóa
             showDeleteDialog?.let { address ->
                 AlertDialog(
                     onDismissRequest = { showDeleteDialog = null },
-                    title = { Text("Xác nhận xóa") },
-                    text = { Text("Bạn có chắc chắn muốn xóa địa chỉ này?") },
+                    title = {
+                        Text(
+                            "Xác nhận xóa",
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    text = {
+                        Text(
+                            "Bạn có chắc chắn muốn xóa địa chỉ này?",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 14.sp
+                        )
+                    },
                     confirmButton = {
                         TextButton(
                             onClick = {
@@ -603,12 +983,23 @@ fun AddressListScreen(navController: NavController) {
                                 }
                             }
                         ) {
-                            Text("Xóa", color = Color(0xFFFF0000))
+                            Text(
+                                "Xóa",
+                                color = MaterialTheme.colorScheme.error,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     },
                     dismissButton = {
-                        TextButton(onClick = { showDeleteDialog = null }) {
-                            Text("Hủy")
+                        TextButton(
+                            onClick = { showDeleteDialog = null }
+                        ) {
+                            Text(
+                                "Hủy",
+                                color = MaterialTheme.colorScheme.primary,
+                                fontSize = 14.sp
+                            )
                         }
                     }
                 )
@@ -626,7 +1017,6 @@ fun AddAddressScreen(navController: NavController, addressToEdit: Address?) {
     var isDefault by remember { mutableStateOf(addressToEdit?.isDefault ?: false) }
     var isLoading by remember { mutableStateOf(false) }
 
-    // States for dropdowns
     var provinces by remember { mutableStateOf<List<Province>>(emptyList()) }
     var districts by remember { mutableStateOf<List<District>>(emptyList()) }
     var wards by remember { mutableStateOf<List<Ward>>(emptyList()) }
@@ -639,7 +1029,6 @@ fun AddAddressScreen(navController: NavController, addressToEdit: Address?) {
     var expandedDistrict by remember { mutableStateOf(false) }
     var expandedWard by remember { mutableStateOf(false) }
 
-    // Load provinces when screen is created
     LaunchedEffect(Unit) {
         val client = OkHttpClient()
         val request = Request.Builder()
@@ -661,14 +1050,12 @@ fun AddAddressScreen(navController: NavController, addressToEdit: Address?) {
         })
     }
 
-    // Update districts when province is selected
     LaunchedEffect(selectedProvince) {
         districts = selectedProvince?.districts ?: emptyList()
         selectedDistrict = null
         selectedWard = null
     }
 
-    // Update wards when district is selected
     LaunchedEffect(selectedDistrict) {
         wards = selectedDistrict?.wards ?: emptyList()
         selectedWard = null
@@ -685,13 +1072,27 @@ fun AddAddressScreen(navController: NavController, addressToEdit: Address?) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (addressToEdit == null) "Thêm địa chỉ mới" else "Chỉnh sửa địa chỉ", color = MaterialTheme.colorScheme.onBackground) },
+                title = { 
+                    Text(
+                        if (addressToEdit == null) "Thêm địa chỉ mới" else "Chỉnh sửa địa chỉ",
+                        color = MaterialTheme.colorScheme.onBackground,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Text("<", color = MaterialTheme.colorScheme.onBackground, fontSize = 20.sp)
+                        Icon(
+                            imageVector = Icons.Default.ArrowBackIosNew,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
             )
         },
         bottomBar = {
@@ -737,7 +1138,7 @@ fun AddAddressScreen(navController: NavController, addressToEdit: Address?) {
                     .padding(16.dp),
                 enabled = isFormValid && !isLoading,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isFormValid && !isLoading) Color(0xFFFF0000) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    containerColor = if (isFormValid && !isLoading) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                     disabledContentColor = MaterialTheme.colorScheme.onPrimary
@@ -749,208 +1150,381 @@ fun AddAddressScreen(navController: NavController, addressToEdit: Address?) {
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    Text("Lưu", color = MaterialTheme.colorScheme.onPrimary, fontSize = 16.sp)
+                    Text(
+                        "Lưu",
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }
     ) { paddingValues ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
-            TextField(
-                value = newName,
-                onValueChange = { newName = it },
-                label = { Text("Tên", color = MaterialTheme.colorScheme.onSurfaceVariant) },
-                modifier = Modifier.fillMaxWidth(),
-                textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-                    unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            )
-            if (!isNameValid && newName.isEmpty()) {
-                Text(
-                    text = "Vui lòng nhập tên",
-                    color = Color(0xFFFF0000),
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(start = 16.dp, top = 4.dp)
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-
-            TextField(
-                value = newPhone,
-                onValueChange = { newPhone = it },
-                label = { Text("Số điện thoại", color = MaterialTheme.colorScheme.onSurfaceVariant) },
-                modifier = Modifier.fillMaxWidth(),
-                textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-                    unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            )
-            if (!isPhoneValid) {
-                Text(
-                    text = when {
-                        newPhone.isEmpty() -> "Vui lòng nhập số điện thoại"
-                        newPhone.length != 10 || !newPhone.startsWith("0") || !newPhone.all { it.isDigit() } -> "Số điện thoại không hợp lệ"
-                        else -> ""
-                    },
-                    color = Color(0xFFFF0000),
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(start = 16.dp, top = 4.dp)
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Province Dropdown
-            ExposedDropdownMenuBox(
-                expanded = expandedProvince,
-                onExpandedChange = { expandedProvince = it },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                TextField(
-                    value = selectedProvince?.name ?: "Chọn tỉnh/thành phố",
-                    onValueChange = {},
-                    readOnly = true,
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedProvince) },
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                        focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-                        unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
+            item {
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .menuAnchor()
-                )
-                ExposedDropdownMenu(
-                    expanded = expandedProvince,
-                    onDismissRequest = { expandedProvince = false }
+                        .padding(bottom = 16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
-                    provinces.forEach { province ->
-                        DropdownMenuItem(
-                            text = { Text(province.name) },
-                            onClick = {
-                                selectedProvince = province
-                                expandedProvince = false
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = newName,
+                            onValueChange = { newName = it },
+                            label = { Text("Tên người nhận") },
+                            modifier = Modifier.fillMaxWidth(),
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.AccountCircle,
+                                    contentDescription = "Name",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            colors = TextFieldDefaults.outlinedTextFieldColors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        if (!isNameValid && newName.isEmpty()) {
+                            Text(
+                                text = "Vui lòng nhập tên",
+                                color = MaterialTheme.colorScheme.error,
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = newPhone,
+                            onValueChange = { newPhone = it },
+                            label = { Text("Số điện thoại") },
+                            modifier = Modifier.fillMaxWidth(),
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Phone,
+                                    contentDescription = "Phone",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            colors = TextFieldDefaults.outlinedTextFieldColors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        if (!isPhoneValid) {
+                            Text(
+                                text = when {
+                                    newPhone.isEmpty() -> "Vui lòng nhập số điện thoại"
+                                    newPhone.length != 10 || !newPhone.startsWith("0") || !newPhone.all { it.isDigit() } -> "Số điện thoại không hợp lệ"
+                                    else -> ""
+                                },
+                                color = MaterialTheme.colorScheme.error,
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        ExposedDropdownMenuBox(
+                            expanded = expandedProvince,
+                            onExpandedChange = { expandedProvince = it },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                value = selectedProvince?.name ?: "Chọn tỉnh/thành phố",
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Tỉnh/Thành phố") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedProvince) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.AddLocation,
+                                        contentDescription = "Province",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                colors = TextFieldDefaults.outlinedTextFieldColors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                ),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor()
+                            )
+                            ExposedDropdownMenu(
+                                expanded = expandedProvince,
+                                onDismissRequest = { expandedProvince = false }
+                            ) {
+                                provinces.forEach { province ->
+                                    DropdownMenuItem(
+                                        text = { Text(province.name) },
+                                        onClick = {
+                                            selectedProvince = province
+                                            expandedProvince = false
+                                        }
+                                    )
+                                }
                             }
+                        }
+                    }
+                }
+            }
+
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        ExposedDropdownMenuBox(
+                            expanded = expandedDistrict,
+                            onExpandedChange = { expandedDistrict = it },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                value = selectedDistrict?.name ?: "Chọn quận/huyện",
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Quận/Huyện") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDistrict) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.AddLocation,
+                                        contentDescription = "District",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                colors = TextFieldDefaults.outlinedTextFieldColors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                ),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor()
+                            )
+                            ExposedDropdownMenu(
+                                expanded = expandedDistrict,
+                                onDismissRequest = { expandedDistrict = false }
+                            ) {
+                                districts.forEach { district ->
+                                    DropdownMenuItem(
+                                        text = { Text(district.name) },
+                                        onClick = {
+                                            selectedDistrict = district
+                                            expandedDistrict = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        ExposedDropdownMenuBox(
+                            expanded = expandedWard,
+                            onExpandedChange = { expandedWard = it },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                value = selectedWard?.name ?: "Chọn phường/xã",
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Phường/Xã") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedWard) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.AddLocation,
+                                        contentDescription = "Ward",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                colors = TextFieldDefaults.outlinedTextFieldColors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                ),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor()
+                            )
+                            ExposedDropdownMenu(
+                                expanded = expandedWard,
+                                onDismissRequest = { expandedWard = false }
+                            ) {
+                                wards.forEach { ward ->
+                                    DropdownMenuItem(
+                                        text = { Text(ward.name) },
+                                        onClick = {
+                                            selectedWard = ward
+                                            expandedWard = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = newAddressDetail,
+                            onValueChange = { newAddressDetail = it },
+                            label = { Text("Địa chỉ cụ thể") },
+                            modifier = Modifier.fillMaxWidth(),
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.AddLocation,
+                                    contentDescription = "Address",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            colors = TextFieldDefaults.outlinedTextFieldColors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            shape = RoundedCornerShape(8.dp)
                         )
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(8.dp))
 
-            // District Dropdown
-            ExposedDropdownMenuBox(
-                expanded = expandedDistrict,
-                onExpandedChange = { expandedDistrict = it },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                TextField(
-                    value = selectedDistrict?.name ?: "Chọn quận/huyện",
-                    onValueChange = {},
-                    readOnly = true,
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDistrict) },
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                        focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-                        unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
+            item {
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .menuAnchor()
-                )
-                ExposedDropdownMenu(
-                    expanded = expandedDistrict,
-                    onDismissRequest = { expandedDistrict = false }
+                        .padding(bottom = 16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
-                    districts.forEach { district ->
-                        DropdownMenuItem(
-                            text = { Text(district.name) },
-                            onClick = {
-                                selectedDistrict = district
-                                expandedDistrict = false
-                            }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = isDefault,
+                            onCheckedChange = { isDefault = it },
+                            colors = CheckboxDefaults.colors(
+                                checkedColor = MaterialTheme.colorScheme.primary,
+                                uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                checkmarkColor = MaterialTheme.colorScheme.onPrimary
+                            )
+                        )
+                        Text(
+                            "Đặt làm địa chỉ mặc định",
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 14.sp
                         )
                     }
                 }
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Ward Dropdown
-            ExposedDropdownMenuBox(
-                expanded = expandedWard,
-                onExpandedChange = { expandedWard = it },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                TextField(
-                    value = selectedWard?.name ?: "Chọn phường/xã",
-                    onValueChange = {},
-                    readOnly = true,
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedWard) },
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                        focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-                        unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor()
-                )
-                ExposedDropdownMenu(
-                    expanded = expandedWard,
-                    onDismissRequest = { expandedWard = false }
-                ) {
-                    wards.forEach { ward ->
-                        DropdownMenuItem(
-                            text = { Text(ward.name) },
-                            onClick = {
-                                selectedWard = ward
-                                expandedWard = false
-                            }
-                        )
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-
-            TextField(
-                value = newAddressDetail,
-                onValueChange = { newAddressDetail = it },
-                label = { Text("Địa chỉ cụ thể", color = MaterialTheme.colorScheme.onSurfaceVariant) },
-                modifier = Modifier.fillMaxWidth(),
-                textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-                    unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(
-                    checked = isDefault,
-                    onCheckedChange = { isDefault = it },
-                    colors = CheckboxDefaults.colors(
-                        checkedColor = Color(0xFFFF0000),
-                        uncheckedColor = MaterialTheme.colorScheme.onBackground,
-                        checkmarkColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                )
-                Text("Đặt làm mặc định", color = MaterialTheme.colorScheme.onBackground)
             }
         }
     }
@@ -1270,10 +1844,9 @@ fun OrderSuccessScreen(
     var orderAddress by remember { mutableStateOf<Address?>(null) }
     var orderProducts by remember { mutableStateOf<List<Product>>(emptyList()) }
     var orderTotalPrice by remember { mutableStateOf(0.0) }
-    var isLoading by remember { mutableStateOf(true) } // Thêm trạng thái tải
-    var errorMessage by remember { mutableStateOf<String?>(null) } // Thêm trạng thái lỗi
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    // Truy xuất đơn hàng mới nhất từ Firebase
     LaunchedEffect(Unit) {
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         if (userId != null) {
@@ -1284,7 +1857,6 @@ fun OrderSuccessScreen(
                     override fun onDataChange(snapshot: DataSnapshot) {
                         if (snapshot.exists()) {
                             for (orderSnapshot in snapshot.children) {
-                                // Lấy địa chỉ
                                 val addressMap = orderSnapshot.child("address").value as? Map<String, Any>
                                 addressMap?.let {
                                     orderAddress = Address(
@@ -1293,10 +1865,8 @@ fun OrderSuccessScreen(
                                         addressDetail = it["addressDetail"] as? String ?: "",
                                         isDefault = it["isDefault"] as? Boolean ?: false
                                     )
-                                    Log.d("OrderSuccessScreen", "Fetched address: $orderAddress")
                                 }
 
-                                // Lấy danh sách sản phẩm
                                 val productsList = orderSnapshot.child("products").value as? List<Map<String, Any>>
                                 productsList?.let { products ->
                                     orderProducts = products.map { productMap ->
@@ -1308,31 +1878,23 @@ fun OrderSuccessScreen(
                                             imageUrl = productMap["imageUrl"] as? String
                                         )
                                     }
-                                    Log.d("OrderSuccessScreen", "Fetched products: $orderProducts")
                                 }
 
-                                // Lấy tổng giá
                                 val totalPriceValue = orderSnapshot.child("totalPrice").value
                                 orderTotalPrice = when (totalPriceValue) {
                                     is Double -> totalPriceValue
                                     is Long -> totalPriceValue.toDouble()
-                                    else -> {
-                                        Log.e("OrderSuccessScreen", "Invalid totalPrice format: $totalPriceValue")
-                                        0.0
-                                    }
+                                    else -> 0.0
                                 }
-                                Log.d("OrderSuccessScreen", "Fetched totalPrice: $orderTotalPrice")
                             }
                         } else {
                             errorMessage = "Không tìm thấy đơn hàng"
-                            Log.e("OrderSuccessScreen", "No order found")
                         }
                         isLoading = false
                     }
 
                     override fun onCancelled(error: DatabaseError) {
                         errorMessage = "Lỗi khi tải đơn hàng: ${error.message}"
-                        Log.e("OrderSuccessScreen", "Error fetching order: ${error.message}")
                         isLoading = false
                     }
                 })
@@ -1345,8 +1907,17 @@ fun OrderSuccessScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Đơn hàng", color = MaterialTheme.colorScheme.onBackground) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+                title = { 
+                    Text(
+                        "Đơn hàng thành công",
+                        color = MaterialTheme.colorScheme.onBackground,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
             )
         }
     ) { paddingValues ->
@@ -1357,7 +1928,9 @@ fun OrderSuccessScreen(
                     .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
         } else if (errorMessage != null) {
             Box(
@@ -1368,7 +1941,7 @@ fun OrderSuccessScreen(
             ) {
                 Text(
                     text = errorMessage ?: "Lỗi không xác định",
-                    color = Color.Red,
+                    color = MaterialTheme.colorScheme.error,
                     fontSize = 16.sp,
                     textAlign = TextAlign.Center
                 )
@@ -1378,35 +1951,146 @@ fun OrderSuccessScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.background)
-                    .padding(paddingValues)
-                    .padding(16.dp),
+                    .padding(paddingValues),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 item {
-                    Icon(
-                        painter = painterResource(id = R.drawable.successful),
-                        contentDescription = "Success",
-                        tint = Color.Unspecified,
+                    Card(
                         modifier = Modifier
-                            .size(100.dp)
-                            .padding(16.dp)
-                    )
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.successful),
+                                contentDescription = "Success",
+                                tint = Color.Unspecified,
+                                modifier = Modifier
+                                    .size(100.dp)
+                                    .padding(bottom = 16.dp)
+                            )
 
-                    Text(
-                        text = "Đặt hàng thành công!",
-                        color = Color(0xFF00C853),
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 24.dp)
-                    )
+                            Text(
+                                text = "Đặt hàng thành công!",
+                                color = Color(0xFF00C853),
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+
+                            Text(
+                                text = "Cảm ơn bạn đã đặt hàng",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 16.sp
+                            )
+                        }
+                    }
                 }
 
                 item {
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                            .padding(horizontal = 16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Text(
+                                text = "Thông tin giao hàng",
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(bottom = 16.dp)
+                            )
+
+                            orderAddress?.let { address ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.AccountCircle, // Sử dụng biểu tượng Code từ Icons.Default
+                                        contentDescription = "Code Icon",
+                                        modifier = Modifier.size(20.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = address.name,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 14.sp
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Phone, // Sử dụng biểu tượng Code từ Icons.Default
+                                        contentDescription = "Code Icon",
+                                        modifier = Modifier.size(20.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = address.phone,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 14.sp
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.Top
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.AddLocation, // Sử dụng biểu tượng Code từ Icons.Default
+                                        contentDescription = "Code Icon",
+                                        modifier = Modifier.size(20.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = address.addressDetail,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        fontSize = 14.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                     ) {
                         Column(
                             modifier = Modifier
@@ -1421,78 +2105,87 @@ fun OrderSuccessScreen(
                                 modifier = Modifier.padding(bottom = 16.dp)
                             )
 
-                            orderAddress?.let {
+                            orderProducts.forEach { product ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        modifier = Modifier.weight(1f),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        AsyncImage(
+                                            model = ImageRequest.Builder(LocalContext.current)
+                                                .data(product.imageUrl)
+                                                .crossfade(true)
+                                                .build(),
+                                            contentDescription = product.name,
+                                            modifier = Modifier
+                                                .size(50.dp)
+                                                .clip(RoundedCornerShape(8.dp)),
+                                            contentScale = ContentScale.Crop
+                                        )
+
+                                        Spacer(modifier = Modifier.width(12.dp))
+
+                                        Column {
+                                            Text(
+                                                text = product.name,
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                fontSize = 14.sp,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Text(
+                                                text = "Số lượng: ${product.quantity}",
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                fontSize = 12.sp
+                                            )
+                                        }
+                                    }
+
+                                    Text(
+                                        text = "${DecimalFormat("#,###").format(product.price.toInt() * product.quantity)}đ",
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+
+                                if (product != orderProducts.last()) {
+                                    Divider(
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+                                        modifier = Modifier.padding(vertical = 8.dp)
+                                    )
+                                }
+                            }
+
+                            Divider(
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+                                modifier = Modifier.padding(vertical = 16.dp)
+                            )
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
                                 Text(
-                                    text = "Địa chỉ giao hàng:",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontSize = 14.sp
-                                )
-                                Text(
-                                    text = "${it.name}\n${it.phone}\n${it.addressDetail}",
+                                    text = "Tổng cộng:",
                                     color = MaterialTheme.colorScheme.onSurface,
-                                    fontSize = 14.sp,
-                                    modifier = Modifier.padding(bottom = 16.dp)
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
                                 )
-                            } ?: Text(
-                                text = "Đang tải địa chỉ giao hàng...",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 14.sp,
-                                modifier = Modifier.padding(bottom = 16.dp)
-                            )
-
-                            Text(
-                                text = "Sản phẩm:",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 14.sp,
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            )
+                                Text(
+                                    text = "${DecimalFormat("#,###").format(orderTotalPrice.toInt())}đ",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
-                    }
-                }
-
-                items(orderProducts) { product ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "${product.name} x${product.quantity}",
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontSize = 14.sp,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Text(
-                            text = "${DecimalFormat("#,###").format(product.price.toInt() * product.quantity)}đ",
-                            color = Color(0xFFFF0000),
-                            fontSize = 14.sp
-                        )
-                    }
-                }
-
-                item {
-                    Divider(
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
-                        modifier = Modifier.padding(vertical = 16.dp)
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "Tổng cộng:",
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "${DecimalFormat("#,###").format(orderTotalPrice.toInt())}đ",
-                            color = Color(0xFFFF0000),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
-                        )
                     }
                 }
 
@@ -1507,15 +2200,15 @@ fun OrderSuccessScreen(
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 24.dp),
+                            .padding(16.dp)
+                            .height(48.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFFF0000),
+                            containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary
                         )
                     ) {
                         Text(
                             text = "Trở về trang chủ",
-                            color = MaterialTheme.colorScheme.onPrimary,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
