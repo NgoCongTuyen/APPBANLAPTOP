@@ -34,8 +34,8 @@ object CartManager {
     }
 
     fun addCartItem(
-        item: CartItem, 
-        onError: (String) -> Unit = {}, 
+        item: CartItem,
+        onError: (String) -> Unit = {},
         onDuplicate: (String) -> Unit = {},
         onSuccess: (String) -> Unit = {}
     ) {
@@ -53,7 +53,7 @@ object CartManager {
 
         cartRef?.let { ref ->
             Log.d("CartManager", "Adding cart item: $item")
-            
+
             // Kiểm tra xem sản phẩm đã tồn tại trong giỏ hàng chưa
             val existingItem = cartItems.find { it.title == item.title }
             if (existingItem != null) {
@@ -64,7 +64,7 @@ object CartManager {
                 val updatedItem = existingItem.copy(timestamp = lastAddedTimestamp)
                 cartItems.add(0, updatedItem)
                 _cartItemsFlow.value = cartItems.toList()
-                
+
                 // Cập nhật lên Firebase
                 existingItem.firebaseKey?.let { key ->
                     cartRef?.child(key)?.setValue(updatedItem)
@@ -104,7 +104,7 @@ object CartManager {
         item.firebaseKey?.let { key ->
             cartRef?.child(key)?.setValue(item)
                 ?.addOnSuccessListener {
-                    Log.d("CartManager", "Successfully updated item: $item")
+                    Log.d("CartManager", "Successfully updated item: $item, isSelected: ${item.isSelected}")
                     val index = cartItems.indexOfFirst { it.firebaseKey == key }
                     if (index != -1) {
                         cartItems[index] = item
@@ -157,21 +157,21 @@ object CartManager {
             valueEventListener = object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     Log.d("CartManager", "Data changed, snapshot: $snapshot")
-                    cartItems.clear()
-                    
                     if (!snapshot.exists() || snapshot.childrenCount.toInt() == 0) {
                         Log.d("CartManager", "Cart is empty")
+                        cartItems.clear()
                         _cartItemsFlow.value = emptyList()
                         return
                     }
 
+                    val updatedItems = mutableListOf<CartItem>()
                     for (childSnapshot in snapshot.children) {
                         try {
                             val cartItem = childSnapshot.getValue(CartItem::class.java)
                             cartItem?.let {
                                 val itemWithKey = it.copy(firebaseKey = childSnapshot.key)
-                                cartItems.add(itemWithKey)
-                                Log.d("CartManager", "Added item to local list: $itemWithKey")
+                                updatedItems.add(itemWithKey)
+                                Log.d("CartManager", "Added item to local list: $itemWithKey, isSelected: ${itemWithKey.isSelected}")
                             }
                         } catch (e: Exception) {
                             Log.e("CartManager", "Error parsing cart item: ${e.message}")
@@ -179,13 +179,28 @@ object CartManager {
                     }
 
                     // Sắp xếp theo timestamp mới nhất
-                    cartItems.sortByDescending { it.timestamp }
+                    val sortedItems = updatedItems.sortedByDescending { it.timestamp }
+
+                    // Bảo toàn trạng thái isSelected từ danh sách hiện tại
+                    val currentItemsMap = cartItems.associateBy { it.firebaseKey }
+                    cartItems.clear()
+
+                    sortedItems.forEach { newItem ->
+                        val existingItem = currentItemsMap[newItem.firebaseKey]
+                        if (existingItem != null) {
+                            cartItems.add(newItem.copy(isSelected = existingItem.isSelected))
+                        } else {
+                            cartItems.add(newItem)
+                        }
+                    }
+
                     _cartItemsFlow.value = cartItems.toList()
                     Log.d("CartManager", "Updated cartItemsFlow with ${cartItems.size} items")
                 }
 
                 override fun onCancelled(error: DatabaseError) {
                     Log.e("CartManager", "Error in Firebase listener: ${error.message}")
+                    _cartItemsFlow.value = cartItems.toList()
                 }
             }
 

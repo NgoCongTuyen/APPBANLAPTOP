@@ -964,7 +964,7 @@ fun StoreHeader() {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "APPLE STORE",
+            text = "ĐPT STORE",
             color = MaterialTheme.colorScheme.onSurface,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold
