@@ -80,6 +80,20 @@ dependencies {
     implementation("androidx.compose.foundation:foundation:1.5.0")
     implementation ("androidx.compose.ui:ui:1.3.0" )// Hoặc phiên bản mới nhất
     implementation ("androidx.compose.material3:material3:1.0.0")
+
+
+
+    implementation ("io.ktor:ktor-client-core:2.3.12")
+    implementation ("io.ktor:ktor-client-okhttp:2.3.12") // Backend HTTP cho Android
+    implementation ("io.ktor:ktor-client-content-negotiation:2.3.12")
+    implementation ("io.ktor:ktor-serialization-kotlinx-json:2.3.12")
+
+    // Kotlinx Serialization
+    implementation ("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+
+    implementation ("com.squareup.okhttp3:okhttp:4.9.3")
+    implementation ("com.google.code.gson:gson:2.9.0")
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

@@ -44,11 +44,41 @@ import java.text.DecimalFormat
 import android.util.Log
 import androidx.compose.foundation.Image
 import com.example.appbanlaptop.Activity.ThemeManager
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import okhttp3.*
+import java.io.IOException
+
+data class Province(
+    val name: String,
+    val code: String,
+    val districts: List<District>
+)
+
+data class District(
+    val name: String,
+    val code: String,
+    val wards: List<Ward>
+)
+
+data class Ward(
+    val name: String,
+    val code: String
+)
 
 // Định nghĩa nguồn dữ liệu chung
 object AddressState {
     val newAddress = mutableStateOf<Address?>(null)
     val addresses = mutableStateListOf<Address>()
+    val selectedAddress = mutableStateOf<Address?>(null) // Thêm trạng thái cho địa chỉ được chọn
 
     fun loadAddresses(userId: String, onComplete: () -> Unit = {}) {
         val database = FirebaseDatabase.getInstance()
@@ -83,6 +113,10 @@ object AddressState {
         })
     }
 
+    fun selectAddress(address: Address?) {
+        selectedAddress.value = address
+    }
+
     fun saveAddress(userId: String, address: Address, onComplete: () -> Unit = {}) {
         val database = FirebaseDatabase.getInstance()
         val addressesRef = database.getReference("addresses").child(userId)
@@ -93,7 +127,6 @@ object AddressState {
                 for (addressSnapshot in snapshot.children) {
                     addressSnapshot.ref.child("isDefault").setValue(false)
                 }
-                // Sau đó lưu địa chỉ mới
                 saveNewAddress(addressesRef, address, onComplete)
             }
         } else {
@@ -125,13 +158,11 @@ object AddressState {
         val database = FirebaseDatabase.getInstance()
         val addressesRef = database.getReference("addresses").child(userId)
 
-        // Nếu địa chỉ mới là mặc định, cập nhật tất cả địa chỉ khác thành không mặc định
         if (newAddress.isDefault) {
             addressesRef.get().addOnSuccessListener { snapshot ->
                 for (addressSnapshot in snapshot.children) {
                     addressSnapshot.ref.child("isDefault").setValue(false)
                 }
-                // Sau đó cập nhật địa chỉ
                 updateExistingAddress(addressesRef, oldAddress, newAddress, onComplete)
             }
         } else {
@@ -164,6 +195,40 @@ object AddressState {
 
                 override fun onCancelled(error: DatabaseError) {
                     Log.e("AddressState", "Error finding address to update: ${error.message}")
+                    onComplete()
+                }
+            })
+    }
+
+    fun deleteAddress(userId: String, address: Address, onComplete: () -> Unit = {}) {
+        val database = FirebaseDatabase.getInstance()
+        val addressesRef = database.getReference("addresses").child(userId)
+
+        addressesRef.orderByChild("addressDetail").equalTo(address.addressDetail)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    for (addressSnapshot in snapshot.children) {
+                        addressSnapshot.ref.removeValue()
+                            .addOnSuccessListener {
+                                Log.d("AddressState", "Address deleted successfully")
+                                addresses.remove(address)
+                                // Nếu địa chỉ bị xóa là địa chỉ đang được chọn, chọn địa chỉ mặc định hoặc đầu tiên
+                                if (selectedAddress.value == address) {
+                                    selectAddress(
+                                        addresses.firstOrNull { it.isDefault } ?: addresses.firstOrNull()
+                                    )
+                                }
+                                onComplete()
+                            }
+                            .addOnFailureListener { e ->
+                                Log.e("AddressState", "Error deleting address: ${e.message}")
+                                onComplete()
+                            }
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("AddressState", "Error finding address to delete: ${error.message}")
                     onComplete()
                 }
             })
@@ -219,9 +284,6 @@ class PaymentActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, totalPriceFromIntent: Double) {
-    var selectedAddress by remember {
-        mutableStateOf<Address?>(null)
-    }
     var isLoading by remember { mutableStateOf(true) }
 
     // Load addresses when screen is created
@@ -229,8 +291,12 @@ fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, t
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         if (userId != null) {
             AddressState.loadAddresses(userId) {
-                // Select default address after loading
-                selectedAddress = AddressState.addresses.firstOrNull { it.isDefault } ?: AddressState.addresses.firstOrNull()
+                // Nếu chưa có địa chỉ được chọn, chọn địa chỉ mặc định hoặc đầu tiên
+                if (AddressState.selectedAddress.value == null) {
+                    AddressState.selectAddress(
+                        AddressState.addresses.firstOrNull { it.isDefault } ?: AddressState.addresses.firstOrNull()
+                    )
+                }
                 isLoading = false
             }
         } else {
@@ -238,24 +304,26 @@ fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, t
         }
     }
 
+    // Xử lý địa chỉ được chọn từ AddressListScreen
     val backStackEntry = navController.currentBackStackEntry
     val selectedFromList = backStackEntry?.savedStateHandle?.get<Address>("selected_address")
 
     LaunchedEffect(selectedFromList) {
         selectedFromList?.let { address ->
             Log.d("PaymentScreen", "Selected address from AddressListScreen: $address")
-            selectedAddress = address
+            AddressState.selectAddress(address)
             backStackEntry.savedStateHandle.remove<Address>("selected_address")
         }
     }
 
+    // Xử lý địa chỉ mới được thêm
     AddressState.newAddress.value?.let { newAddress ->
         Log.d("PaymentScreen", "New address detected: $newAddress")
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         if (userId != null) {
             AddressState.saveAddress(userId, newAddress) {
                 AddressState.addresses.add(newAddress)
-                selectedAddress = newAddress
+                AddressState.selectAddress(newAddress)
                 AddressState.newAddress.value = null
             }
         }
@@ -319,7 +387,7 @@ fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, t
                 productsSize = products.size,
                 totalPrice = totalPrice,
                 products = products,
-                selectedAddress = selectedAddress,
+                selectedAddress = AddressState.selectedAddress.value,
                 navController = navController
             )
         }
@@ -348,7 +416,7 @@ fun PaymentScreen(navController: NavController, checkoutItems: List<CartItem>, t
             ) {
                 item {
                     ShippingInfo(
-                        selectedAddress = selectedAddress,
+                        selectedAddress = AddressState.selectedAddress.value,
                         onAddressClick = {
                             navController.navigate("address_list")
                         }
@@ -414,6 +482,9 @@ fun ShippingInfo(selectedAddress: Address?, onAddressClick: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddressListScreen(navController: NavController) {
+    var showDeleteDialog by remember { mutableStateOf<Address?>(null) }
+    val context = LocalContext.current
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -438,64 +509,109 @@ fun AddressListScreen(navController: NavController) {
             }
         }
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .padding(paddingValues)
-        ) {
-            itemsIndexed(AddressState.addresses) { index, address ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(
+        Box(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(paddingValues)
+            ) {
+                itemsIndexed(AddressState.addresses) { index, address ->
+                    Row(
                         modifier = Modifier
-                            .weight(1f)
-                            .clickable {
-                                Log.d("AddressListScreen", "Selected address: $address")
-                                navController.previousBackStackEntry?.savedStateHandle?.set("selected_address", address)
-                                navController.popBackStack()
-                            }
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = address.name,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = address.phone,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            fontSize = 14.sp
-                        )
-                        Text(
-                            text = address.addressDetail,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            fontSize = 14.sp
-                        )
-                        if (address.isDefault) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable {
+                                    Log.d("AddressListScreen", "Selected address: $address")
+                                    navController.previousBackStackEntry?.savedStateHandle?.set("selected_address", address)
+                                    navController.popBackStack()
+                                }
+                        ) {
                             Text(
-                                text = "Mặc định",
+                                text = address.name,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = address.phone,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                fontSize = 14.sp
+                            )
+                            Text(
+                                text = address.addressDetail,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                fontSize = 14.sp
+                            )
+                            if (address.isDefault) {
+                                Text(
+                                    text = "Mặc định",
+                                    color = Color(0xFFFF0000),
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                        Row {
+                            Text(
+                                text = "Chỉnh sửa",
                                 color = Color(0xFFFF0000),
-                                fontSize = 12.sp
+                                fontSize = 14.sp,
+                                modifier = Modifier
+                                    .padding(end = 8.dp)
+                                    .clickable {
+                                        Log.d("AddressListScreen", "Edit address clicked: $address")
+                                        navController.navigate("edit_address/$index")
+                                    }
+                            )
+                            Text(
+                                text = "Xóa",
+                                color = Color(0xFFFF0000),
+                                fontSize = 14.sp,
+                                modifier = Modifier
+                                    .clickable {
+                                        showDeleteDialog = address
+                                    }
                             )
                         }
                     }
-                    Text(
-                        text = "Chỉnh sửa",
-                        color = Color(0xFFFF0000),
-                        fontSize = 14.sp,
-                        modifier = Modifier
-                            .padding(start = 8.dp)
-                            .clickable {
-                                Log.d("AddressListScreen", "Edit address clicked: $address")
-                                navController.navigate("edit_address/$index")
-                            }
-                    )
                 }
+            }
+
+            // Dialog xác nhận xóa
+            showDeleteDialog?.let { address ->
+                AlertDialog(
+                    onDismissRequest = { showDeleteDialog = null },
+                    title = { Text("Xác nhận xóa") },
+                    text = { Text("Bạn có chắc chắn muốn xóa địa chỉ này?") },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                val userId = FirebaseAuth.getInstance().currentUser?.uid
+                                if (userId != null) {
+                                    AddressState.deleteAddress(userId, address) {
+                                        showDeleteDialog = null
+                                        android.widget.Toast.makeText(context, "Đã xóa địa chỉ", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                } else {
+                                    android.widget.Toast.makeText(context, "Vui lòng đăng nhập để xóa địa chỉ", android.widget.Toast.LENGTH_SHORT).show()
+                                    showDeleteDialog = null
+                                }
+                            }
+                        ) {
+                            Text("Xóa", color = Color(0xFFFF0000))
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDeleteDialog = null }) {
+                            Text("Hủy")
+                        }
+                    }
+                )
             }
         }
     }
@@ -504,21 +620,65 @@ fun AddressListScreen(navController: NavController) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddAddressScreen(navController: NavController, addressToEdit: Address?) {
-    // Nếu addressToEdit không null, điền thông tin hiện tại để chỉnh sửa
     var newName by remember { mutableStateOf(addressToEdit?.name ?: "") }
     var newPhone by remember { mutableStateOf(addressToEdit?.phone ?: "") }
-    var newProvince by remember { mutableStateOf(addressToEdit?.addressDetail?.split(", ")?.getOrNull(3) ?: "") }
-    var newDistrict by remember { mutableStateOf(addressToEdit?.addressDetail?.split(", ")?.getOrNull(2) ?: "") }
-    var newWard by remember { mutableStateOf(addressToEdit?.addressDetail?.split(", ")?.getOrNull(1) ?: "") }
     var newAddressDetail by remember { mutableStateOf(addressToEdit?.addressDetail?.split(", ")?.getOrNull(0) ?: "") }
     var isDefault by remember { mutableStateOf(addressToEdit?.isDefault ?: false) }
     var isLoading by remember { mutableStateOf(false) }
 
+    // States for dropdowns
+    var provinces by remember { mutableStateOf<List<Province>>(emptyList()) }
+    var districts by remember { mutableStateOf<List<District>>(emptyList()) }
+    var wards by remember { mutableStateOf<List<Ward>>(emptyList()) }
+
+    var selectedProvince by remember { mutableStateOf<Province?>(null) }
+    var selectedDistrict by remember { mutableStateOf<District?>(null) }
+    var selectedWard by remember { mutableStateOf<Ward?>(null) }
+
+    var expandedProvince by remember { mutableStateOf(false) }
+    var expandedDistrict by remember { mutableStateOf(false) }
+    var expandedWard by remember { mutableStateOf(false) }
+
+    // Load provinces when screen is created
+    LaunchedEffect(Unit) {
+        val client = OkHttpClient()
+        val request = Request.Builder()
+            .url("https://provinces.open-api.vn/api/?depth=3")
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e("AddAddressScreen", "Error loading provinces: ${e.message}")
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                response.body?.string()?.let { jsonString ->
+                    val type = object : TypeToken<List<Province>>() {}.type
+                    val loadedProvinces = Gson().fromJson<List<Province>>(jsonString, type)
+                    provinces = loadedProvinces
+                }
+            }
+        })
+    }
+
+    // Update districts when province is selected
+    LaunchedEffect(selectedProvince) {
+        districts = selectedProvince?.districts ?: emptyList()
+        selectedDistrict = null
+        selectedWard = null
+    }
+
+    // Update wards when district is selected
+    LaunchedEffect(selectedDistrict) {
+        wards = selectedDistrict?.wards ?: emptyList()
+        selectedWard = null
+    }
+
     val isNameValid = newName.isNotBlank()
     val isPhoneValid = newPhone.isNotBlank() && newPhone.length == 10 && newPhone.startsWith("0") && newPhone.all { it.isDigit() }
-    val isProvinceValid = newProvince.isNotBlank()
-    val isDistrictValid = newDistrict.isNotBlank()
-    val isWardValid = newWard.isNotBlank()
+    val isProvinceValid = selectedProvince != null
+    val isDistrictValid = selectedDistrict != null
+    val isWardValid = selectedWard != null
     val isAddressDetailValid = newAddressDetail.isNotBlank()
     val isFormValid = isNameValid && isPhoneValid && isProvinceValid && isDistrictValid && isWardValid && isAddressDetailValid
 
@@ -545,27 +705,28 @@ fun AddAddressScreen(navController: NavController, addressToEdit: Address?) {
                         return@Button
                     }
 
+                    val fullAddress = "$newAddressDetail, ${selectedWard?.name}, ${selectedDistrict?.name}, ${selectedProvince?.name}"
                     val updatedAddress = Address(
                         name = newName,
                         phone = newPhone,
-                        addressDetail = "$newAddressDetail, $newWard, $newDistrict, $newProvince",
+                        addressDetail = fullAddress,
                         isDefault = isDefault
                     )
 
                     if (addressToEdit == null) {
-                        // Thêm mới
                         AddressState.saveAddress(userId, updatedAddress) {
-                            AddressState.newAddress.value = updatedAddress
+                            AddressState.addresses.add(updatedAddress)
+                            AddressState.selectAddress(updatedAddress)
                             isLoading = false
                             navController.popBackStack("payment", inclusive = false)
                         }
                     } else {
-                        // Chỉnh sửa
                         AddressState.updateAddress(userId, addressToEdit, updatedAddress) {
                             val index = AddressState.addresses.indexOf(addressToEdit)
                             if (index != -1) {
                                 AddressState.addresses[index] = updatedAddress
                             }
+                            AddressState.selectAddress(updatedAddress)
                             isLoading = false
                             navController.popBackStack("address_list", inclusive = false)
                         }
@@ -650,49 +811,118 @@ fun AddAddressScreen(navController: NavController, addressToEdit: Address?) {
             }
             Spacer(modifier = Modifier.height(8.dp))
 
-            TextField(
-                value = newProvince,
-                onValueChange = { newProvince = it },
-                label = { Text("Tỉnh/Thành phố", color = MaterialTheme.colorScheme.onSurfaceVariant) },
-                modifier = Modifier.fillMaxWidth(),
-                textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-                    unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurfaceVariant
+            // Province Dropdown
+            ExposedDropdownMenuBox(
+                expanded = expandedProvince,
+                onExpandedChange = { expandedProvince = it },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                TextField(
+                    value = selectedProvince?.name ?: "Chọn tỉnh/thành phố",
+                    onValueChange = {},
+                    readOnly = true,
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedProvince) },
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                        unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
                 )
-            )
+                ExposedDropdownMenu(
+                    expanded = expandedProvince,
+                    onDismissRequest = { expandedProvince = false }
+                ) {
+                    provinces.forEach { province ->
+                        DropdownMenuItem(
+                            text = { Text(province.name) },
+                            onClick = {
+                                selectedProvince = province
+                                expandedProvince = false
+                            }
+                        )
+                    }
+                }
+            }
             Spacer(modifier = Modifier.height(8.dp))
 
-            TextField(
-                value = newDistrict,
-                onValueChange = { newDistrict = it },
-                label = { Text("Quận/Huyện", color = MaterialTheme.colorScheme.onSurfaceVariant) },
-                modifier = Modifier.fillMaxWidth(),
-                textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-                    unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurfaceVariant
+            // District Dropdown
+            ExposedDropdownMenuBox(
+                expanded = expandedDistrict,
+                onExpandedChange = { expandedDistrict = it },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                TextField(
+                    value = selectedDistrict?.name ?: "Chọn quận/huyện",
+                    onValueChange = {},
+                    readOnly = true,
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDistrict) },
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                        unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
                 )
-            )
+                ExposedDropdownMenu(
+                    expanded = expandedDistrict,
+                    onDismissRequest = { expandedDistrict = false }
+                ) {
+                    districts.forEach { district ->
+                        DropdownMenuItem(
+                            text = { Text(district.name) },
+                            onClick = {
+                                selectedDistrict = district
+                                expandedDistrict = false
+                            }
+                        )
+                    }
+                }
+            }
             Spacer(modifier = Modifier.height(8.dp))
 
-            TextField(
-                value = newWard,
-                onValueChange = { newWard = it },
-                label = { Text("Phường/Xã", color = MaterialTheme.colorScheme.onSurfaceVariant) },
-                modifier = Modifier.fillMaxWidth(),
-                textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-                    unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurfaceVariant
+            // Ward Dropdown
+            ExposedDropdownMenuBox(
+                expanded = expandedWard,
+                onExpandedChange = { expandedWard = it },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                TextField(
+                    value = selectedWard?.name ?: "Chọn phường/xã",
+                    onValueChange = {},
+                    readOnly = true,
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedWard) },
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                        unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
                 )
-            )
+                ExposedDropdownMenu(
+                    expanded = expandedWard,
+                    onDismissRequest = { expandedWard = false }
+                ) {
+                    wards.forEach { ward ->
+                        DropdownMenuItem(
+                            text = { Text(ward.name) },
+                            onClick = {
+                                selectedWard = ward
+                                expandedWard = false
+                            }
+                        )
+                    }
+                }
+            }
             Spacer(modifier = Modifier.height(8.dp))
 
             TextField(
